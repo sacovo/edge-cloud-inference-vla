@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.venv/
+.claude/settings.local.json
+# experiment artifacts (keep small summaries only)
+experiments/**/checkpoints/
+experiments/**/logs/
+wandb/
+*.pt
+*.ckpt
+*.safetensors
