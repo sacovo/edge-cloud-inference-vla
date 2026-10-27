@@ -14,4 +14,11 @@
 | `literature/SEARCH_LOG.md` | Queries used, for re-running the search |
 | `docs/claude-workflow-best-practices.md` | How to run this project effectively with Claude Code |
 | `scripts/merge_bib.py` | Rebuild `references.bib` from `literature/bib/` |
-| `scripts/verify_bib.py` | Check every arXiv ID/title in `references.bib` against the arXiv API |
+| `scripts/verify_bib.py` | Check every arXiv ID/title in `literature/bib/*.bib` against the arXiv API |
+
+## License
+
+- **Code** (`scripts/`, and future `src/`, `tests/`, `eval/`): [MIT](LICENSE)
+- **Text and data** (`literature/`, `docs/`, `*.md`, `*.bib`): [CC BY 4.0](LICENSE-CC-BY-4.0)
+
+Bibliographic metadata and quoted excerpts in `literature/` remain with their original authors.
