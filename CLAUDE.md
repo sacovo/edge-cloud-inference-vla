@@ -4,7 +4,7 @@ Research question: how small can the on-robot policy be when it is conditioned o
 
 ## Current phase
 - Phase 1 (done 2026-10-27): rapid scoping review. Start with `literature/SYNTHESIS.md`; protocol in `literature/PROTOCOL.md`.
-- Phase 2 (next): sim experiments E0–E5 from `literature/SYNTHESIS.md` §5. No code or environment exists yet.
+- Phase 2 (next): sim experiments, manipulators first. EXP-0001 (`experiments/EXP-0001-latent-taskid-vs-state/README.md`) is designed; its criteria are pre-registered, so log any change in its Change log. No code or environment exists yet.
 
 ## Session start
 Read `JOURNAL.md` (latest entries first) before doing anything else.

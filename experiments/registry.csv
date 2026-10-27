@@ -1,0 +1,2 @@
+exp_id,created,title,hypotheses,status,git_sha,seeds,headline_result
+EXP-0001,2026-10-27,When does the remote latent have to carry state? (task-ID vs state crossover; blind fast policy),H1 crossover; H2 blind needs z-state; H3 staleness scales; H0 null,designed,,3,

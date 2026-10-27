@@ -131,10 +131,11 @@ Ordered so each step is cheap and de-risks the next.
    - Precompute embeddings from a ~27B VLM (e.g. Gemma-3-27B or Qwen-VL-32B class) per frame offline, so VLM cost is decoupled from the sweep.
    - Train small fast policies conditioned on them at a fixed latent period.
    - Compare with the published RoboDual, HiRT and CloudEdgeVLA numbers.
-2. **E1: Size × latent sweep (G1).**
-   - Grid: fast-policy params {~0.1M, 1M, 5M, 20M, 50M} × latent dim {8, 64, 512, full} × latent period {1, 4, 10, 20 control steps}.
-   - Baselines: no latent, task-ID only (T1).
-   - Anchors: RMA (8-D), BC-Z (512-D), RoboDual (20M), HiRT (35M).
+2. **E1: Size × latent sweep (G1, G9), now [EXP-0001](../experiments/EXP-0001-latent-taskid-vs-state/README.md).**
+   - Hypothesis: a large fast policy uses z only as a task ID. Small or **blind** fast policies need z to carry scene state, so a task-ID substitute fails below some size, and staleness starts to matter.
+   - Grid: local vision {none, tiny, full} × head size {~10k … 50M} × conditioning {none, task-ID, z at episode start, z refreshed, delayed oracle state, fresh oracle state} × latent period {1, 4, 10, 20 steps}.
+   - Tasks: manipulation (robosuite/LIBERO), graded by scene dynamics (static, contact, one-off event, continuous motion).
+   - Anchors: RMA (8-D), BC-Z (512-D), RoboDual (20M), HiRT (35M); blind-policy precedent in legged locomotion (Agarwal 2022, Robot Parkour).
 3. **E2: Staleness and network realism (G2, G6).**
    - Variants: (a) delay augmentation only; (b) plus an explicit latent-age input (Δt embedding, CfC-style); (c) plus an A2C2-style correction head.
    - Conditions: recorded jitter and loss traces, and outages, testing fallback when the latent is missing.
@@ -142,7 +143,7 @@ Ordered so each step is cheap and de-risks the next.
    - Move to Isaac Lab, which has per-sensor `update_period` and IMU.
    - Inputs: IMU 100 Hz, torque 60 Hz, camera 20 Hz and latent 5 Hz, through native-rate encoders + hold (Theme 4 approach A/B) vs a continuous-time recurrent core (approach I).
    - Ablate each modality's rate.
-5. **E4: Drone variant (G4, G7).**
+5. **E4 (optional, later): Drone variant (G4, G7).** Manipulators are the primary platform; drones are one possible deployment target.
    - Aerial Gym or gym-pybullet-drones.
    - Fast policy sized for Orin Nano and for MCU (GAP8/STM32 class), conditioned on the remote VLM latent.
    - Measure energy per action (J) and flight-relevant latency.

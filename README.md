@@ -13,6 +13,7 @@
 | `literature/bib/*.bib` | Per-theme BibTeX (source of truth; edit these) |
 | `literature/SEARCH_LOG.md` | Queries used, for re-running the search |
 | `docs/claude-workflow-best-practices.md` | How to run this project effectively with Claude Code |
+| `experiments/` | Pre-registered experiment designs (`EXP-NNNN-*/README.md`) and `registry.csv` |
 | `scripts/merge_bib.py` | Rebuild `references.bib` from `literature/bib/` |
 | `scripts/verify_bib.py` | Check every arXiv ID/title in `literature/bib/*.bib` against the arXiv API |
 
