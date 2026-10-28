@@ -1,0 +1,112 @@
+{
+  "summary": {
+    "file": "data/libero/libero_spatial/pick_up_the_black_bowl_between_the_plate_and_the_ramekin_and_place_it_on_the_plate_demo.hdf5",
+    "episodes": 5,
+    "open_loop_success_rate": 1.0,
+    "hybrid_step_qpos_err_max": 0.028082060437408053,
+    "objects": [
+      "akita_black_bowl_1",
+      "akita_black_bowl_2",
+      "cookies_1",
+      "glazed_rim_porcelain_ramekin_1",
+      "plate_1"
+    ]
+  },
+  "episodes": [
+    {
+      "demo": "demo_0",
+      "steps": 98,
+      "init_state_matches_states0": true,
+      "hybrid_step_qpos_err_max": 0.026087820006349478,
+      "hybrid_step_qpos_err_median": 0.00113080704983759,
+      "substeps_per_step": [
+        25
+      ],
+      "substep_dt": 0.0019999999999997797,
+      "joint_torque_absmax": 60.8549784397001,
+      "ee_force_absmax": 39.19293827061172,
+      "ee_force_nonzero_frac": 1.0,
+      "n_objects": 5,
+      "recorded_success_state": true,
+      "open_loop_success": true,
+      "open_loop_success_step": 75,
+      "open_loop_qpos_drift_max": 0.09664317743306093
+    },
+    {
+      "demo": "demo_1",
+      "steps": 84,
+      "init_state_matches_states0": true,
+      "hybrid_step_qpos_err_max": 0.025656343362945783,
+      "hybrid_step_qpos_err_median": 0.0003920252007602043,
+      "substeps_per_step": [
+        25
+      ],
+      "substep_dt": 0.0019999999999997797,
+      "joint_torque_absmax": 66.92005720850933,
+      "ee_force_absmax": 20.938874111115865,
+      "ee_force_nonzero_frac": 1.0,
+      "n_objects": 5,
+      "recorded_success_state": true,
+      "open_loop_success": true,
+      "open_loop_success_step": 71,
+      "open_loop_qpos_drift_max": 0.1013011289453366
+    },
+    {
+      "demo": "demo_2",
+      "steps": 90,
+      "init_state_matches_states0": true,
+      "hybrid_step_qpos_err_max": 0.01658898292372002,
+      "hybrid_step_qpos_err_median": 0.001383296586599414,
+      "substeps_per_step": [
+        25
+      ],
+      "substep_dt": 0.0019999999999997797,
+      "joint_torque_absmax": 65.44465790244888,
+      "ee_force_absmax": 64.42203874662299,
+      "ee_force_nonzero_frac": 1.0,
+      "n_objects": 5,
+      "recorded_success_state": true,
+      "open_loop_success": true,
+      "open_loop_success_step": 78,
+      "open_loop_qpos_drift_max": 0.12683416117661225
+    },
+    {
+      "demo": "demo_3",
+      "steps": 97,
+      "init_state_matches_states0": true,
+      "hybrid_step_qpos_err_max": 0.028082060437408053,
+      "hybrid_step_qpos_err_median": 0.0006727858989384811,
+      "substeps_per_step": [
+        25
+      ],
+      "substep_dt": 0.0019999999999997797,
+      "joint_torque_absmax": 69.96399261784327,
+      "ee_force_absmax": 37.21113096503647,
+      "ee_force_nonzero_frac": 1.0,
+      "n_objects": 5,
+      "recorded_success_state": true,
+      "open_loop_success": true,
+      "open_loop_success_step": 78,
+      "open_loop_qpos_drift_max": 0.06970947957294432
+    },
+    {
+      "demo": "demo_4",
+      "steps": 105,
+      "init_state_matches_states0": true,
+      "hybrid_step_qpos_err_max": 0.019418037871289484,
+      "hybrid_step_qpos_err_median": 1.9624774916248883e-05,
+      "substeps_per_step": [
+        25
+      ],
+      "substep_dt": 0.0019999999999997797,
+      "joint_torque_absmax": 71.02748592317703,
+      "ee_force_absmax": 31.81765083142941,
+      "ee_force_nonzero_frac": 1.0,
+      "n_objects": 5,
+      "recorded_success_state": true,
+      "open_loop_success": true,
+      "open_loop_success_step": 88,
+      "open_loop_qpos_drift_max": 0.03659323729389182
+    }
+  ]
+}

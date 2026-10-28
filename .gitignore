@@ -9,3 +9,5 @@ wandb/
 *.pt
 *.ckpt
 *.safetensors
+data/
+.libero/
