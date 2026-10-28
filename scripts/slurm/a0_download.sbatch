@@ -10,5 +10,5 @@
 #SBATCH --output=logs/%x_%j.out
 set -euo pipefail
 cd "$SLURM_SUBMIT_DIR"; source scripts/slurm/env.sh
-scripts/a0_download_libero.sh "$ECVLA_SCRATCH/raw" "$ECVLA_SCRATCH/raw/manifest_phaseA.txt" "$@"
+PYTHON="uv run --no-project python" scripts/a0_download_libero.sh "$ECVLA_SCRATCH/raw" "$ECVLA_SCRATCH/raw/manifest_phaseA.txt" "$@"
 du -sh "$ECVLA_SCRATCH/raw"

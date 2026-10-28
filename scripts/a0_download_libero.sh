@@ -9,7 +9,7 @@ BASE=https://huggingface.co/datasets/yifengzhu-hf/LIBERO-datasets
 for s in $SUITES; do
   mkdir -p "$RAW/$s"
   curl -sf "https://huggingface.co/api/datasets/yifengzhu-hf/LIBERO-datasets/tree/main/$s" \
-    | python3 -c 'import json,sys; [print(x["path"], x["size"]) for x in json.load(sys.stdin) if x["path"].endswith(".hdf5")]' \
+    | ${PYTHON:-python3} -c 'import json,sys; [print(x["path"], x["size"]) for x in json.load(sys.stdin) if x["path"].endswith(".hdf5")]' \
     | while read -r path size; do
         dst="$RAW/$path"
         if [ ! -s "$dst" ] || [ "$(stat -c %s "$dst")" != "$size" ]; then
