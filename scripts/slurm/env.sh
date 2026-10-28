@@ -5,5 +5,5 @@ export UV_FROZEN=1
 export MUJOCO_GL=egl PYOPENGL_PLATFORM=egl
 export HF_HOME=/scratch/sandro.covo/hf
 export ECVLA_SCRATCH=/scratch/sandro.covo/ecvla
-export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK:-1}
+export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK:-1} LP_NUM_THREADS=${SLURM_CPUS_PER_TASK:-1}  # LP_: Mesa llvmpipe render threads
 ECVLA_RUN="uv run --extra libero"

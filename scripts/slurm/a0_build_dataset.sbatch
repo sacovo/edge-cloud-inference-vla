@@ -5,8 +5,8 @@
 # The manifest lists one source hdf5 path per line. Finished outputs are skipped, so reruns are safe.
 #SBATCH --clusters=calc-cpu
 #SBATCH --partition=cpu-daily
-#SBATCH --cpus-per-task=2
-#SBATCH --mem=6G
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=8G
 #SBATCH --time=03:00:00
 #SBATCH --job-name=ecvla-a0-build
 #SBATCH --output=logs/%x_%A_%a.out
