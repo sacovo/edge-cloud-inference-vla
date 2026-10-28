@@ -4,12 +4,15 @@ Research question: how small can the on-robot policy be when it is conditioned o
 
 ## Current phase
 - Phase 1 (done 2026-10-27): rapid scoping review. Start with `literature/SYNTHESIS.md`; protocol in `literature/PROTOCOL.md`.
-- Phase 2 (next): sim experiments, manipulators first. EXP-0001 (`experiments/EXP-0001-latent-taskid-vs-state/README.md`) is designed; its criteria are pre-registered, so log any change in its Change log. No code or environment exists yet.
+- Phase 2 (next): sim experiments, manipulators first. EXP-0001 (`experiments/EXP-0001-latent-taskid-vs-state/README.md`) is designed; its criteria are pre-registered, so log any change in its Change log. A0 has started: the replay check passed (see JOURNAL).
 
 ## Session start
 Read `JOURNAL.md` (latest entries first) before doing anything else.
 
 ## Commands
+- Env: `uv sync --extra libero --extra dev` (Python ≤3.12; hf-libero 0.1.4, robosuite 1.4.0). Unset `VIRTUAL_ENV` if uv warns about it. Local rendering uses `MUJOCO_GL=egl` (Mesa/ROCm); `src/ecvla/libero_env.py` writes a project-local LIBERO config. Never edit `~/.libero`.
+- LIBERO replay check: `uv run python scripts/a0_replay_check.py <demo.hdf5> --episodes 5`. Original HDF5s with sim states: `yifengzhu-hf/LIBERO-datasets` (not `HuggingFaceVLA/libero`, which has no states). Local data in `data/` (gitignored).
+- HPC: `ssh sandro.covo@calculon.informatik.fhnw.ch`, Slurm; data/cache on `/scratch/sandro.covo/hf`. No conda.
 - Rebuild bibliography: `python3 scripts/merge_bib.py`
 - Verify bibliography: `python3 scripts/verify_bib.py` (must exit 0; queries the arXiv API)
 - A PostToolUse hook (`scripts/hooks/bib_check.sh`) runs both whenever `literature/bib/*.bib` is edited. If it reports a MISMATCH, fix the entry; do not weaken the check.
