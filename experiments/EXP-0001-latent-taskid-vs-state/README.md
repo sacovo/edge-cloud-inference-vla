@@ -230,7 +230,9 @@ Start Phase B (bootstrapped event/dynamic tasks, §4 demonstrations, full grid, 
 - ~~Demonstration source~~ (resolved 2026-10-28): teleop seed + bootstrap rollouts; see §4.
 - Phase B: collector policy (ACT vs SmolVLA), and whether a RECAP step is worth it.
 - Diverse dataset for the backbone stage (e.g. a DROID / Open X-Embodiment mixture). It must not contain LIBERO for `z-ft-div`. Check that the action spaces map onto FAST+ tokens consistently with LIBERO's controller.
-- Backbone fine-tuning recipe and compute: full fine-tune vs LoRA; openpi's FAST training path.
+- ~~Framework~~ (resolved 2026-10-28): LeRobot PyTorch port (`lerobot/pi05_base`), the same stack as the author's smolvla-rl.
+- Backbone fine-tuning recipe: full fine-tune vs LoRA, on the H200 nodes.
+- ~~Onboard target~~ (resolved 2026-10-28): Jetson **Orin NX / Nano** (8–16 GB, 10–25 W). The ~3B backbone is ~6 GB in bf16, which is tight on 8 GB, so quantisation is likely. If the measured slow-loop latency exceeds 1 s, extend axis D beyond 20 steps for P-onboard and log the change here.
 - Measured slow-loop latency for P-onboard (backbone only, on the target Jetson) and P-remote.
 - Camera resolution for `full` (LIBERO default vs 128×128), after confirming LIBERO/robosuite control and camera defaults.
 - Compute budget and where VLM inference runs during closed-loop evaluation.
