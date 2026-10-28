@@ -2,6 +2,14 @@
 
 Newest entries first. Each entry covers what was tried, the result, and what failed and why.
 
+## 2026-10-28: EXP-0001 starts on LIBERO (Phase A)
+
+- Decision (author): start with an existing suite and existing demos, and build our own dataset only if the concept shows up.
+- Phase A runs on LIBERO, replaying the demos to get multi-rate sensors, torque, F/T and ground-truth state. LIBERO-Goal (fixed layout, so task ID should suffice) acts as a control for Spatial/Object (where layout or object varies, so scene state is needed).
+- Pre-registered Phase A criteria: A-test (does the suite need state?), A-z (does z recover ≥50% of the oracle gap?), and A-control (does z help less on Goal?). Phase B (bootstrapped event/dynamic tasks) starts only if A-z and A-control pass.
+- Risk noted: `pi05_base` pretraining may include LIBERO. Check this in A0.
+- Next: A0 infrastructure.
+
 ## 2026-10-28: EXP-0001 decisions (slow model, demos, onboard profile)
 
 - Slow model: `pi05_base` only, not `pi05_libero`, which was fine-tuned on LIBERO and would skew z. Added PaliGemma 2 28B as the generic ~27B remote model.

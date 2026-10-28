@@ -1,6 +1,6 @@
 # EXP-0001: When Does the Remote Latent Have to Carry State?
 
-- **Status:** designed, not started
+- **Status:** designed, not started. Phase A (LIBERO) first
 - **Created:** 2026-10-27
 - **Platform:** simulated manipulator (robosuite / LIBERO family); slow model either onboard (same Jetson) or remote; see §3 Deployment profiles
 - **Related:** gaps G1, G2 and G9 and threat T1 in [`literature/SYNTHESIS.md`](../../literature/SYNTHESIS.md); replaces the original E1 grid.
@@ -130,7 +130,9 @@ The collector is sighted, so blind students learn from a sighted teacher's traje
 
 Statistics: mean ± 95% CI over seeds (bootstrap over episodes within each seed, then over seeds).
 
-## 6. Pre-registered success criteria
+## 6. Pre-registered success criteria (Phase B)
+
+These apply to Phase B (§7.4). Phase A has its own criteria in §7.2.
 
 pp = percentage points.
 
@@ -145,24 +147,73 @@ If H0 holds for frozen z (Stage 2) but `oracle-delayed` shows a large state valu
 
 ## 7. Stages
 
-Each stage gates the next.
+The experiment runs in two phases. **Phase A** uses an existing suite with its existing demonstrations, so it can start without building a data pipeline. **Phase B** uses the bootstrapped event/dynamic tasks from §4 and the criteria in §6. Phase B starts only if Phase A passes its gate (§7.3).
 
-0. **S0: Infrastructure.**
-   - an environment wrapper with multi-rate observations (robosuite `sampling_rate`), latency/jitter injection for z, and the T-event/T-dynamic variants
-   - the demonstration pipeline
-   - a smoke test (2-minute train + eval) and unit tests for the delay wrapper
-1. **S1: Oracle-only pilot (no VLM).** Run conditions `none`, `task-id`, `oracle-delayed` and `oracle-fresh` across the whole vision × size × k grid. This is cheap and tests whether the task suite needs scene state at all. **Gate:** `oracle-fresh` beats `task-id` by ≥ 20 pp for blind policies on T-event + T-dynamic. If not, redesign the tasks before spending VLM compute.
-2. **S2: Frozen 27B latent.**
-   - Precompute z for all demonstration frames offline.
-   - In closed-loop evaluation, run the VLM in the loop with simulated delay.
-   - Add `z-ep0` and `z-refresh`, plus the probes.
-3. **S3: Adapted latent (conditional).** Run Stage 3 if S2 shows H0 for frozen z, or a large gap between `z-refresh` and `oracle-delayed`.
+### 7.1 Phase A: LIBERO with existing demonstrations
+
+**Why LIBERO first:**
+- It ships human demonstrations: 50 per task, 10 tasks per suite.
+- It has the most published baselines.
+- Its suites already differ in how much scene state a blind policy needs. Each suite pins down one factor and varies another, per the LIBERO paper:
+
+| Suite | What varies across tasks | Expected need for scene state (blind policy) |
+|---|---|---|
+| LIBERO-Goal | Goal only (same objects, same layout) | **Low**: task ID should get a blind policy far |
+| LIBERO-Spatial | Layout (same objects) | **High**: must locate the referenced object |
+| LIBERO-Object | Target object (same layout) | **Medium–high** |
+| LIBERO-10 (long) | Multi-step tasks | High; optional, run last |
+
+LIBERO-Goal is a built-in control: if z helps a blind policy there as much as on Spatial, z is probably doing something other than providing state.
+
+**Phase A grid** (reduced, to start sooner):
+
+| Axis | Levels |
+|---|---|
+| Vision | `none`, `full` (`tiny` deferred) |
+| Head size | ~10k, ~100k, ~1M, ~10M |
+| Conditioning | all six from §3 |
+| Update period | k ∈ {1, 10} |
+
+That is 3 seeds per cell, evaluated on the suite's standard initial states.
+
+**Data:** replay the LIBERO demonstrations in robosuite from their saved simulator states. Replaying regenerates the observations at our own sensor rates and adds joint torque, wrist F/T and ground-truth object poses, which the stored observations may not contain. That replay is feasible is an assumption; verify it in A0.
+
+**Steps:**
+- **A0: Infrastructure.**
+  - demo replay at multiple sensor rates
+  - the z delay/jitter wrapper
+  - a check of LIBERO's control rate and camera defaults
+  - the backbone-only `pi05_base` latency measurement
+  - a smoke test and unit tests for the delay wrapper
+- **A1: Oracle pilot (no VLM).** Conditions `none`, `task-id`, `oracle-delayed`, `oracle-fresh`.
+- **A2: `pi05_base` latent.** Precompute z for all demo frames. Run closed-loop evaluation with z in the loop under the delay model. Add `z-ep0`, `z-refresh` and the probes.
+- Check whether `pi05_base` pretraining data includes LIBERO. If it does, log it as a threat to validity: z would be partly in-domain.
+
+### 7.2 Phase A pre-registered criteria
+
+"Gap" = SR(condition) − SR(`task-id`), computed for blind (`none`) policies, on LIBERO-Spatial + LIBERO-Object pooled.
+
+| Criterion | Pass if | Meaning if it fails |
+|---|---|---|
+| **A-test (the suite can test the idea)** | `oracle-fresh` gap ≥ 20 pp at ≥ 2 head sizes | LIBERO does not need scene state for blind policies. That is **not** evidence against the concept; go to Phase B directly |
+| **A-z (z carries state)** | the `z-refresh` (k=1) gap reaches ≥ 50% of the `oracle-fresh` gap at ≥ 2 head sizes ≤ 1M | Frozen `pi05_base` z carries little usable state (H0 for this latent). Consider the adapted latent (S3) before Phase B |
+| **A-control** | On LIBERO-Goal, the `z-refresh` gap is smaller than on Spatial + Object (CIs not overlapping) | z helps for reasons other than state. Investigate before Phase B |
+| **A-crossover (indicative only)** | For `full` vision, \|SR(`z-refresh`) − SR(`task-id`)\| at the 10M head is smaller than at the 10k head | Reported, not gating; Phase A is too static for a clean H1 test |
+
+### 7.3 Gate to Phase B
+
+Start Phase B (bootstrapped event/dynamic tasks, §4 demonstrations, full grid, §6 criteria) if **A-z and A-control pass**. If A-test fails, Phase B is the only way to test the idea, so start it directly.
+
+### 7.4 Phase B and the adapted latent
+
+- **B0–B2:** the original S0–S2 plan on the T-static/contact/event/dynamic tasks. Gate: `oracle-fresh` beats `task-id` by ≥ 20 pp for blind policies on T-event + T-dynamic; otherwise redesign the tasks before spending VLM compute.
+- **S3: Adapted latent (conditional):** run if A2 or B2 shows H0 for frozen z, or a large gap between `z-refresh` and `oracle-delayed`.
 
 ## 8. Open decisions (resolve before S0 ends)
 
 - ~~Slow VLM~~ (resolved 2026-10-28): `pi05_base` + PaliGemma 2 28B; see §3.
 - ~~Demonstration source~~ (resolved 2026-10-28): teleop seed + bootstrap rollouts; see §4.
-- Collector policy: ACT vs SmolVLA, and whether a RECAP step is worth it.
+- Phase B: collector policy (ACT vs SmolVLA), and whether a RECAP step is worth it.
 - Measured slow-loop latency for P-onboard (backbone only, on the target Jetson) and P-remote.
 - Camera resolution for `full` (LIBERO default vs 128×128), after confirming LIBERO/robosuite control and camera defaults.
 - Compute budget and where VLM inference runs during closed-loop evaluation.
@@ -187,3 +238,4 @@ _Not started._
   - Added deployment profiles: P-onboard (both loops on one Jetson) and P-remote.
   - Demonstrations now come from teleop seed episodes plus success-filtered policy rollouts.
   - No hypothesis, condition or criterion changed.
+- 2026-10-28 (before any run): split into Phase A (LIBERO with existing demos, reduced grid, its own pre-registered criteria in §7.2) and Phase B (bootstrapped event/dynamic tasks, unchanged §6 criteria). Phase B is gated on Phase A, so we can start sooner and build our own dataset only if the concept shows up.
