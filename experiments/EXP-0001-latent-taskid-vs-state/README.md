@@ -209,7 +209,7 @@ Start Phase B (bootstrapped event/dynamic tasks, §4 demonstrations, full grid, 
 - **B0–B2:** the original S0–S2 plan on the T-static/contact/event/dynamic tasks. Gate: `oracle-fresh` beats `task-id` by ≥ 20 pp for blind policies on T-event + T-dynamic; otherwise redesign the tasks before spending VLM compute.
 - **S3: Adapted latent (conditional):** run if A2 or B2 shows H0 for frozen z, or a large gap between `z-refresh` and `oracle-delayed`.
 
-## 8. Open decisions (resolve before S0 ends)
+## 8. Open decisions (resolve before A0 ends unless marked Phase B)
 
 - ~~Slow VLM~~ (resolved 2026-10-28): `pi05_base` + PaliGemma 2 28B; see §3.
 - ~~Demonstration source~~ (resolved 2026-10-28): teleop seed + bootstrap rollouts; see §4.
