@@ -1,0 +1,432 @@
+{
+  "suites": {
+    "libero_goal": {
+      "tasks": 10,
+      "demos": 500,
+      "steps": 63728,
+      "steps_per_demo_mean": 127.5,
+      "open_loop_success_rate": 0.92,
+      "recorded_success_rate": 0.932,
+      "max_step_qpos_err": 1.8196,
+      "objects_per_task": [
+        4
+      ],
+      "gb": 2.2,
+      "worst_open_loop_tasks": [
+        [
+          39,
+          50,
+          "open_the_top_drawer_and_put_the_bowl_inside_demo"
+        ],
+        [
+          43,
+          50,
+          "open_the_middle_drawer_of_the_cabinet_demo"
+        ],
+        [
+          43,
+          50,
+          "push_the_plate_to_the_front_of_the_stove_demo"
+        ]
+      ]
+    },
+    "libero_object": {
+      "tasks": 10,
+      "demos": 500,
+      "steps": 74507,
+      "steps_per_demo_mean": 149.0,
+      "open_loop_success_rate": 0.932,
+      "recorded_success_rate": 1.0,
+      "max_step_qpos_err": 0.1296,
+      "objects_per_task": [
+        7
+      ],
+      "gb": 3.21,
+      "worst_open_loop_tasks": [
+        [
+          42,
+          50,
+          "pick_up_the_ketchup_and_place_it_in_the_basket_demo"
+        ],
+        [
+          44,
+          50,
+          "pick_up_the_bbq_sauce_and_place_it_in_the_basket_demo"
+        ],
+        [
+          46,
+          50,
+          "pick_up_the_milk_and_place_it_in_the_basket_demo"
+        ]
+      ]
+    },
+    "libero_spatial": {
+      "tasks": 10,
+      "demos": 500,
+      "steps": 62250,
+      "steps_per_demo_mean": 124.5,
+      "open_loop_success_rate": 0.926,
+      "recorded_success_rate": 0.986,
+      "max_step_qpos_err": 0.2876,
+      "objects_per_task": [
+        5
+      ],
+      "gb": 2.23,
+      "worst_open_loop_tasks": [
+        [
+          42,
+          50,
+          "pick_up_the_black_bowl_in_the_top_drawer_of_the_wooden_cabinet_and_place_it_on_the_plate_demo"
+        ],
+        [
+          42,
+          50,
+          "pick_up_the_black_bowl_on_the_stove_and_place_it_on_the_plate_demo"
+        ],
+        [
+          46,
+          50,
+          "pick_up_the_black_bowl_next_to_the_plate_and_place_it_on_the_plate_demo"
+        ]
+      ]
+    }
+  },
+  "tasks": {
+    "libero_goal": [
+      {
+        "task": "open_the_middle_drawer_of_the_cabinet_demo",
+        "instruction": "open the middle layer of the drawer",
+        "demos": 50,
+        "steps": 7027,
+        "open_loop_success": 43,
+        "recorded_success_state": 50,
+        "max_step_qpos_err": 0.16326095163822174,
+        "n_objects": 4,
+        "bytes": 235191459
+      },
+      {
+        "task": "open_the_top_drawer_and_put_the_bowl_inside_demo",
+        "instruction": "open the top layer of the drawer and put the bowl inside",
+        "demos": 50,
+        "steps": 10208,
+        "open_loop_success": 39,
+        "recorded_success_state": 46,
+        "max_step_qpos_err": 1.322243571281433,
+        "n_objects": 4,
+        "bytes": 345144536
+      },
+      {
+        "task": "push_the_plate_to_the_front_of_the_stove_demo",
+        "instruction": "push the plate to the front of the stove",
+        "demos": 50,
+        "steps": 7638,
+        "open_loop_success": 43,
+        "recorded_success_state": 50,
+        "max_step_qpos_err": 0.06888066232204437,
+        "n_objects": 4,
+        "bytes": 251778289
+      },
+      {
+        "task": "put_the_bowl_on_the_plate_demo",
+        "instruction": "put the bowl on the plate",
+        "demos": 50,
+        "steps": 4669,
+        "open_loop_success": 48,
+        "recorded_success_state": 50,
+        "max_step_qpos_err": 0.24594546854496002,
+        "n_objects": 4,
+        "bytes": 169040690
+      },
+      {
+        "task": "put_the_bowl_on_the_stove_demo",
+        "instruction": "put the bowl on the stove",
+        "demos": 50,
+        "steps": 5081,
+        "open_loop_success": 50,
+        "recorded_success_state": 49,
+        "max_step_qpos_err": 0.13080339133739471,
+        "n_objects": 4,
+        "bytes": 184583550
+      },
+      {
+        "task": "put_the_bowl_on_top_of_the_cabinet_demo",
+        "instruction": "put the bowl on the top of the drawer",
+        "demos": 50,
+        "steps": 5094,
+        "open_loop_success": 49,
+        "recorded_success_state": 50,
+        "max_step_qpos_err": 0.10463753342628479,
+        "n_objects": 4,
+        "bytes": 182528050
+      },
+      {
+        "task": "put_the_cream_cheese_in_the_bowl_demo",
+        "instruction": "put the cream cheese on the bowl",
+        "demos": 50,
+        "steps": 5349,
+        "open_loop_success": 44,
+        "recorded_success_state": 50,
+        "max_step_qpos_err": 0.10267806798219681,
+        "n_objects": 4,
+        "bytes": 181578591
+      },
+      {
+        "task": "put_the_wine_bottle_on_the_rack_demo",
+        "instruction": "put the wine bottle on the rack",
+        "demos": 50,
+        "steps": 8808,
+        "open_loop_success": 46,
+        "recorded_success_state": 21,
+        "max_step_qpos_err": 1.8195866346359253,
+        "n_objects": 4,
+        "bytes": 307482044
+      },
+      {
+        "task": "put_the_wine_bottle_on_top_of_the_cabinet_demo",
+        "instruction": "put the wine bottle on the top of the drawer",
+        "demos": 50,
+        "steps": 5394,
+        "open_loop_success": 49,
+        "recorded_success_state": 50,
+        "max_step_qpos_err": 0.18568648397922516,
+        "n_objects": 4,
+        "bytes": 187846767
+      },
+      {
+        "task": "turn_on_the_stove_demo",
+        "instruction": "turn on the stove",
+        "demos": 50,
+        "steps": 4460,
+        "open_loop_success": 49,
+        "recorded_success_state": 50,
+        "max_step_qpos_err": 0.44092637300491333,
+        "n_objects": 4,
+        "bytes": 151054942
+      }
+    ],
+    "libero_object": [
+      {
+        "task": "pick_up_the_alphabet_soup_and_place_it_in_the_basket_demo",
+        "instruction": "pick the alphabet soup and place it in the basket",
+        "demos": 50,
+        "steps": 7808,
+        "open_loop_success": 48,
+        "recorded_success_state": 50,
+        "max_step_qpos_err": 0.06763269752264023,
+        "n_objects": 7,
+        "bytes": 332116873
+      },
+      {
+        "task": "pick_up_the_bbq_sauce_and_place_it_in_the_basket_demo",
+        "instruction": "pick the bbq sauce and place it in the basket",
+        "demos": 50,
+        "steps": 7348,
+        "open_loop_success": 44,
+        "recorded_success_state": 50,
+        "max_step_qpos_err": 0.11795186996459961,
+        "n_objects": 7,
+        "bytes": 314408760
+      },
+      {
+        "task": "pick_up_the_butter_and_place_it_in_the_basket_demo",
+        "instruction": "pick the butter and place it in the basket",
+        "demos": 50,
+        "steps": 7865,
+        "open_loop_success": 48,
+        "recorded_success_state": 50,
+        "max_step_qpos_err": 0.08809026330709457,
+        "n_objects": 7,
+        "bytes": 338645226
+      },
+      {
+        "task": "pick_up_the_chocolate_pudding_and_place_it_in_the_basket_demo",
+        "instruction": "pick the chocolate pudding and place it in the basket",
+        "demos": 50,
+        "steps": 7982,
+        "open_loop_success": 50,
+        "recorded_success_state": 50,
+        "max_step_qpos_err": 0.08195745199918747,
+        "n_objects": 7,
+        "bytes": 344437386
+      },
+      {
+        "task": "pick_up_the_cream_cheese_and_place_it_in_the_basket_demo",
+        "instruction": "pick the cream cheese and place it in the basket",
+        "demos": 50,
+        "steps": 7194,
+        "open_loop_success": 47,
+        "recorded_success_state": 50,
+        "max_step_qpos_err": 0.11279717832803726,
+        "n_objects": 7,
+        "bytes": 308217547
+      },
+      {
+        "task": "pick_up_the_ketchup_and_place_it_in_the_basket_demo",
+        "instruction": "pick the ketchup and place it in the basket",
+        "demos": 50,
+        "steps": 8056,
+        "open_loop_success": 42,
+        "recorded_success_state": 50,
+        "max_step_qpos_err": 0.05888514965772629,
+        "n_objects": 7,
+        "bytes": 346301733
+      },
+      {
+        "task": "pick_up_the_milk_and_place_it_in_the_basket_demo",
+        "instruction": "pick the milk and place it in the basket",
+        "demos": 50,
+        "steps": 7281,
+        "open_loop_success": 46,
+        "recorded_success_state": 50,
+        "max_step_qpos_err": 0.12956160306930542,
+        "n_objects": 7,
+        "bytes": 316102703
+      },
+      {
+        "task": "pick_up_the_orange_juice_and_place_it_in_the_basket_demo",
+        "instruction": "pick the orange juice and place it in the basket",
+        "demos": 50,
+        "steps": 6968,
+        "open_loop_success": 48,
+        "recorded_success_state": 50,
+        "max_step_qpos_err": 0.057318300008773804,
+        "n_objects": 7,
+        "bytes": 301806277
+      },
+      {
+        "task": "pick_up_the_salad_dressing_and_place_it_in_the_basket_demo",
+        "instruction": "pick the salad dressing and place it in the basket",
+        "demos": 50,
+        "steps": 6641,
+        "open_loop_success": 47,
+        "recorded_success_state": 50,
+        "max_step_qpos_err": 0.041192371398210526,
+        "n_objects": 7,
+        "bytes": 286782163
+      },
+      {
+        "task": "pick_up_the_tomato_sauce_and_place_it_in_the_basket_demo",
+        "instruction": "pick the tomato sauce and place it in the basket",
+        "demos": 50,
+        "steps": 7364,
+        "open_loop_success": 46,
+        "recorded_success_state": 50,
+        "max_step_qpos_err": 0.036937415599823,
+        "n_objects": 7,
+        "bytes": 322397682
+      }
+    ],
+    "libero_spatial": [
+      {
+        "task": "pick_up_the_black_bowl_between_the_plate_and_the_ramekin_and_place_it_on_the_plate_demo",
+        "instruction": "pick the akita black bowl between the plate and the ramekin and place it on the plate",
+        "demos": 50,
+        "steps": 5068,
+        "open_loop_success": 49,
+        "recorded_success_state": 48,
+        "max_step_qpos_err": 0.06954283267259598,
+        "n_objects": 5,
+        "bytes": 185001125
+      },
+      {
+        "task": "pick_up_the_black_bowl_from_table_center_and_place_it_on_the_plate_demo",
+        "instruction": "pick the akita black bowl from table center and place it on the plate",
+        "demos": 50,
+        "steps": 5882,
+        "open_loop_success": 50,
+        "recorded_success_state": 48,
+        "max_step_qpos_err": 0.06192419305443764,
+        "n_objects": 5,
+        "bytes": 215139270
+      },
+      {
+        "task": "pick_up_the_black_bowl_in_the_top_drawer_of_the_wooden_cabinet_and_place_it_on_the_plate_demo",
+        "instruction": "pick the akita black bowl in the top layer of the wooden cabinet and place it on the plate",
+        "demos": 50,
+        "steps": 7479,
+        "open_loop_success": 42,
+        "recorded_success_state": 49,
+        "max_step_qpos_err": 0.2214268296957016,
+        "n_objects": 5,
+        "bytes": 271594960
+      },
+      {
+        "task": "pick_up_the_black_bowl_next_to_the_cookie_box_and_place_it_on_the_plate_demo",
+        "instruction": "pick the akita black bowl next to the cookies box and place it on the plate",
+        "demos": 50,
+        "steps": 6312,
+        "open_loop_success": 48,
+        "recorded_success_state": 50,
+        "max_step_qpos_err": 0.16581687331199646,
+        "n_objects": 5,
+        "bytes": 219963920
+      },
+      {
+        "task": "pick_up_the_black_bowl_next_to_the_plate_and_place_it_on_the_plate_demo",
+        "instruction": "pick the akita black bowl next to the plate and place it on the plate",
+        "demos": 50,
+        "steps": 5963,
+        "open_loop_success": 46,
+        "recorded_success_state": 49,
+        "max_step_qpos_err": 0.09134772419929504,
+        "n_objects": 5,
+        "bytes": 216735550
+      },
+      {
+        "task": "pick_up_the_black_bowl_next_to_the_ramekin_and_place_it_on_the_plate_demo",
+        "instruction": "pick the akita black bowl next to the ramekin and place it on the plate",
+        "demos": 50,
+        "steps": 6707,
+        "open_loop_success": 46,
+        "recorded_success_state": 50,
+        "max_step_qpos_err": 0.0702681764960289,
+        "n_objects": 5,
+        "bytes": 238053350
+      },
+      {
+        "task": "pick_up_the_black_bowl_on_the_cookie_box_and_place_it_on_the_plate_demo",
+        "instruction": "pick the akita black bowl on the cookies box and place it on the plate",
+        "demos": 50,
+        "steps": 5052,
+        "open_loop_success": 47,
+        "recorded_success_state": 50,
+        "max_step_qpos_err": 0.06329377740621567,
+        "n_objects": 5,
+        "bytes": 180514059
+      },
+      {
+        "task": "pick_up_the_black_bowl_on_the_ramekin_and_place_it_on_the_plate_demo",
+        "instruction": "pick the akita black bowl on the ramekin and place it on the plate",
+        "demos": 50,
+        "steps": 5796,
+        "open_loop_success": 46,
+        "recorded_success_state": 49,
+        "max_step_qpos_err": 0.11766844242811203,
+        "n_objects": 5,
+        "bytes": 208446011
+      },
+      {
+        "task": "pick_up_the_black_bowl_on_the_stove_and_place_it_on_the_plate_demo",
+        "instruction": "pick the akita black bowl on the stove and place it on the plate",
+        "demos": 50,
+        "steps": 7111,
+        "open_loop_success": 42,
+        "recorded_success_state": 50,
+        "max_step_qpos_err": 0.2875692844390869,
+        "n_objects": 5,
+        "bytes": 255015854
+      },
+      {
+        "task": "pick_up_the_black_bowl_on_the_wooden_cabinet_and_place_it_on_the_plate_demo",
+        "instruction": "pick the akita black bowl on the wooden cabinet and place it on the plate",
+        "demos": 50,
+        "steps": 6880,
+        "open_loop_success": 47,
+        "recorded_success_state": 50,
+        "max_step_qpos_err": 0.06157935410737991,
+        "n_objects": 5,
+        "bytes": 239015544
+      }
+    ]
+  }
+}
