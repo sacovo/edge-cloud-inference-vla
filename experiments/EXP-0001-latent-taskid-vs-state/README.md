@@ -67,15 +67,29 @@ The vision encoder is a small CNN for `tiny` and a frozen pretrained encoder plu
 
 ### The slow model (z)
 
-- **Model:** two latent sources, compared at matched conditions.
-  - **`pi05_base`**: the PaliGemma-based VLM backbone of π0.5 (~3B, robot-pretrained), from openpi. We use the base checkpoint only, **not** `pi05_libero`: that one was fine-tuned on LIBERO demos and would make z look strong for in-domain reasons.
-  - **PaliGemma 2 28B** (Gemma 2 27B + SigLIP-So400m, arXiv 2412.03555): generic, not robot-pretrained, and matching the ~27B remote-model budget.
-  - Optional secondary sweep: PaliGemma 2 3B / 10B / 28B. These share an image encoder, so this varies the slow model's size and nothing else.
-  - Weights are under Gemma terms (openpi code is Apache-2.0). Check them before redistributing any derived weights.
+- **Model:** the PaliGemma-based VLM backbone of π0.5 (`pi05_base`, ~3B, robot-pretrained, from openpi). We use the base checkpoint, **not** `pi05_libero`.
+  - For P-remote, PaliGemma 2 28B (Gemma 2 27B + SigLIP-So400m, arXiv 2412.03555; `steiner2024paligemma2`) gets the same treatment. It is optional in Phase A, since fine-tuning 28B is expensive.
+  - Optional later sweep: PaliGemma 2 3B / 10B / 28B, which share an image encoder.
+  - Weights are under Gemma terms (openpi code is Apache-2.0).
 - **Inputs:** agent-view + wrist RGB and the instruction.
-- **Latent:**
-  - **Stage 2 (frozen):** a mean-pooled final-layer hidden state, then a trainable linear projection to d = 256. Only the projection trains with the fast policy.
-  - **Stage 3 (adapted):** K = 8 learnable query tokens with LoRA on the VLM, trained end-to-end with the fast policy, so z can learn to carry what the head needs.
+- **Training the backbone (two-stage, decoupled from the fast policy):**
+  1. **Backbone stage.** Fine-tune the backbone autoregressively to predict FAST+ action tokens (FAST, arXiv 2501.09747; `pertsch2025fast`) on a diverse robot dataset. Why: in the author's own experiments, and per π\*0.6 / RECAP (arXiv 2511.14759; `pi2025pistar06`), a frozen backbone performs worse, and fine-tuning on FAST-token prediction helps a lot. Knowledge Insulation (`driess2025knowledge`, Theme 1) also trains the backbone on FAST tokens. Training on action prediction should make the latent carry action-relevant scene state.
+  2. **Freeze** the backbone, precompute z for all demo frames, and train the small fast policies on that fixed z. Only a linear projection to d = 256 trains with each fast policy.
+
+  This keeps the two trainings independent: one backbone run serves the whole fast-policy grid.
+- **Latent variants (axis C, the z-conditions):**
+
+| ID | Backbone | Fine-tuning data | Role |
+|---|---|---|---|
+| `z-ft-div` | `pi05_base` + FAST fine-tune | Diverse robot data, **no LIBERO** | **Primary.** Not tuned to the evaluation suite, so its state content is not in-domain skew |
+| `z-ft-lib` | `pi05_base` + FAST fine-tune | Same diverse data **+ LIBERO training demos** of the evaluated suites (never evaluation initial states) | In-domain variant: how much does seeing the suite help? |
+| `z-frozen` | raw `pi05_base` | none | Ablation: expected to be worse |
+
+- **Readout of z:**
+  - **R1 (primary): prefix readout.** One forward pass, no decoding: the final-layer hidden state at the position that predicts the first action token, concatenated with the mean-pooled prefix. Cheap enough for the P-onboard slow loop.
+  - **R2: action-token readout.** Final-layer hidden states of the first m = 8 decoded FAST tokens, close to what AsyncVLA and CloudEdgeVLA transmit. It costs m sequential decode steps, so it counts as a latency variant.
+- **Extra reference condition `slow-only`:** the FAST-fine-tuned backbone used directly as a policy, decoding full action chunks at whatever rate it reaches on the target hardware. This is "the slow model alone"; the dual system has to beat it.
+- **End-to-end adapted latent** (learnable queries + LoRA trained jointly with the fast policy) is demoted to an optional later variant (S3).
 - **Delay model:** z computed from observation *t* becomes available at *t + k*. Training samples *k* from the same set as evaluation, plus jitter of ±1 step.
 
 ### Deployment profiles
@@ -186,7 +200,8 @@ That is 3 seeds per cell, evaluated on the suite's standard initial states.
   - the backbone-only `pi05_base` latency measurement
   - a smoke test and unit tests for the delay wrapper
 - **A1: Oracle pilot (no VLM).** Conditions `none`, `task-id`, `oracle-delayed`, `oracle-fresh`.
-- **A2: `pi05_base` latent.** Precompute z for all demo frames. Run closed-loop evaluation with z in the loop under the delay model. Add `z-ep0`, `z-refresh` and the probes.
+- **A1b: Backbone stage.** FAST fine-tune of `pi05_base` → `z-ft-div` and `z-ft-lib`. Report `slow-only` success on LIBERO.
+- **A2: Latents.** Precompute z (`z-ft-div`, `z-ft-lib`, `z-frozen`; readout R1, plus R2 for `z-ft-div`) for all demo frames. Run closed-loop evaluation with z in the loop under the delay model. Add `z-ep0`, `z-refresh` and the probes.
 - Check whether `pi05_base` pretraining data includes LIBERO. If it does, log it as a threat to validity: z would be partly in-domain.
 
 ### 7.2 Phase A pre-registered criteria
@@ -196,7 +211,7 @@ That is 3 seeds per cell, evaluated on the suite's standard initial states.
 | Criterion | Pass if | Meaning if it fails |
 |---|---|---|
 | **A-test (the suite can test the idea)** | `oracle-fresh` gap ≥ 20 pp at ≥ 2 head sizes | LIBERO does not need scene state for blind policies. That is **not** evidence against the concept; go to Phase B directly |
-| **A-z (z carries state)** | the `z-refresh` (k=1) gap reaches ≥ 50% of the `oracle-fresh` gap at ≥ 2 head sizes ≤ 1M | Frozen `pi05_base` z carries little usable state (H0 for this latent). Consider the adapted latent (S3) before Phase B |
+| **A-z (z carries state)** | using the primary latent (`z-ft-div`, R1), the `z-refresh` (k=1) gap reaches ≥ 50% of the `oracle-fresh` gap at ≥ 2 head sizes ≤ 1M | Frozen `pi05_base` z carries little usable state (H0 for this latent). Consider the adapted latent (S3) before Phase B |
 | **A-control** | On LIBERO-Goal, the `z-refresh` gap is smaller than on Spatial + Object (CIs not overlapping) | z helps for reasons other than state. Investigate before Phase B |
 | **A-crossover (indicative only)** | For `full` vision, \|SR(`z-refresh`) − SR(`task-id`)\| at the 10M head is smaller than at the 10k head | Reported, not gating; Phase A is too static for a clean H1 test |
 
@@ -214,6 +229,8 @@ Start Phase B (bootstrapped event/dynamic tasks, §4 demonstrations, full grid, 
 - ~~Slow VLM~~ (resolved 2026-10-28): `pi05_base` + PaliGemma 2 28B; see §3.
 - ~~Demonstration source~~ (resolved 2026-10-28): teleop seed + bootstrap rollouts; see §4.
 - Phase B: collector policy (ACT vs SmolVLA), and whether a RECAP step is worth it.
+- Diverse dataset for the backbone stage (e.g. a DROID / Open X-Embodiment mixture). It must not contain LIBERO for `z-ft-div`. Check that the action spaces map onto FAST+ tokens consistently with LIBERO's controller.
+- Backbone fine-tuning recipe and compute: full fine-tune vs LoRA; openpi's FAST training path.
 - Measured slow-loop latency for P-onboard (backbone only, on the target Jetson) and P-remote.
 - Camera resolution for `full` (LIBERO default vs 128×128), after confirming LIBERO/robosuite control and camera defaults.
 - Compute budget and where VLM inference runs during closed-loop evaluation.
@@ -239,3 +256,4 @@ _Not started._
   - Demonstrations now come from teleop seed episodes plus success-filtered policy rollouts.
   - No hypothesis, condition or criterion changed.
 - 2026-10-28 (before any run): split into Phase A (LIBERO with existing demos, reduced grid, its own pre-registered criteria in §7.2) and Phase B (bootstrapped event/dynamic tasks, unchanged §6 criteria). Phase B is gated on Phase A, so we can start sooner and build our own dataset only if the concept shows up.
+- 2026-10-28 (before any run): the latent now comes from a two-stage pipeline. The `pi05_base` backbone is first fine-tuned on FAST+ action tokens (diverse data, primary variant without LIBERO), then frozen. Added variants `z-ft-lib` and `z-frozen`, readouts R1/R2, and the `slow-only` reference. A-z now names the primary latent. End-to-end adaptation is optional.
