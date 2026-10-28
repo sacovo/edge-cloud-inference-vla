@@ -2,7 +2,7 @@
 
 - **Status:** designed, not started
 - **Created:** 2026-10-27
-- **Platform:** simulated manipulator (robosuite / LIBERO family)
+- **Platform:** simulated manipulator (robosuite / LIBERO family); slow model either onboard (same Jetson) or remote; see §3 Deployment profiles
 - **Related:** gaps G1, G2 and G9 and threat T1 in [`literature/SYNTHESIS.md`](../../literature/SYNTHESIS.md); replaces the original E1 grid.
 
 The hypotheses, conditions, metrics and success criteria below are fixed **before** any run. Changes after the first result must be logged in the [Change log](#change-log) with a reason.
@@ -67,12 +67,27 @@ The vision encoder is a small CNN for `tiny` and a frozen pretrained encoder plu
 
 ### The slow model (z)
 
-- **Model:** a ~27B open VLM. Candidates: Gemma 3 27B, Qwen2.5-VL-32B. The choice is open (see §8).
+- **Model:** two latent sources, compared at matched conditions.
+  - **`pi05_base`**: the PaliGemma-based VLM backbone of π0.5 (~3B, robot-pretrained), from openpi. We use the base checkpoint only, **not** `pi05_libero`: that one was fine-tuned on LIBERO demos and would make z look strong for in-domain reasons.
+  - **PaliGemma 2 28B** (Gemma 2 27B + SigLIP-So400m, arXiv 2412.03555): generic, not robot-pretrained, and matching the ~27B remote-model budget.
+  - Optional secondary sweep: PaliGemma 2 3B / 10B / 28B. These share an image encoder, so this varies the slow model's size and nothing else.
+  - Weights are under Gemma terms (openpi code is Apache-2.0). Check them before redistributing any derived weights.
 - **Inputs:** agent-view + wrist RGB and the instruction.
 - **Latent:**
   - **Stage 2 (frozen):** a mean-pooled final-layer hidden state, then a trainable linear projection to d = 256. Only the projection trains with the fast policy.
   - **Stage 3 (adapted):** K = 8 learnable query tokens with LoRA on the VLM, trained end-to-end with the fast policy, so z can learn to carry what the head needs.
 - **Delay model:** z computed from observation *t* becomes available at *t + k*. Training samples *k* from the same set as evaluation, plus jitter of ±1 step.
+
+### Deployment profiles
+
+The research question does not depend on *where* the slow model runs. The deployment only changes the latency distribution of z, so each profile is a delay model, not a separate experiment.
+
+| Profile | Slow model | Where | Latency model for z | Why |
+|---|---|---|---|---|
+| **P-onboard** | `pi05_base` (~3B) | Same Jetson as the fast policy, in a separate slow loop (≈1–4 Hz) | Fixed compute latency, no loss; may compete with the fast loop for the GPU | The author's observation: a 3B VLA fits on a Jetson but cannot produce actions fast enough for control. As a slow loop it only has to emit z. Theme 3 reports π0.5 at 10.3 Hz on Jetson Orin after heavy optimisation (EagleVLA) and 1421 ms naive. Measure the backbone-only time ourselves. |
+| **P-remote** | PaliGemma 2 28B | Stationary GPU machine over WiFi | Compute latency + network jitter, loss and outages | The original edge–cloud setup |
+
+This gives a direct trade-off: a smaller, fresher latent (P-onboard) against a larger, staler one (P-remote). Measure the real slow-loop latency of each profile in S0 and set the axis-D update periods from it.
 
 ## 4. Tasks
 
@@ -85,7 +100,19 @@ Four task groups, ordered by how fast the scene state changes. Each group gets 3
 | **T-event** | Object displaced once mid-episode, injected grasp failure, distractor appears | One discrete change | Drops if the update period exceeds the reaction window |
 | **T-dynamic** | Target moves at a constant speed (robosuite conveyor-style) | Continuous motion | Breaks down beyond some latency |
 
-LIBERO tasks are mostly static. T-event and T-dynamic need custom robosuite variants built with scripted perturbations. Their demonstrations come from scripted or MimicGen-style generation (open decision, §8).
+LIBERO tasks are mostly static. T-event and T-dynamic need custom robosuite variants built with scripted perturbations.
+
+### Demonstrations: bootstrap with policy rollouts
+
+1. **Seed:** teleoperate a few episodes per task in sim (robosuite teleop), with perturbations active for T-event/T-dynamic.
+2. **Bootstrap policy:** train a sighted policy (ACT or SmolVLA) on the seed demos.
+3. **Collect:** roll it out with perturbations and randomized initial states. Keep the **successful** episodes, with full multi-rate sensor logs and ground-truth state.
+4. **Iterate:** retrain on seed + kept episodes. Add manual episodes where success stays low, until each task has enough demos. Optionally improve the collector with the author's RECAP-on-SmolVLA work.
+5. **Freeze** the final dataset with a version tag before any EXP-0001 training. Evaluation initial states come from a held-out seed range and are never used for collection.
+
+The collector is sighted, so blind students learn from a sighted teacher's trajectories (privileged-teacher style). Two biases follow from filtering on success:
+- The kept episodes over-represent easy initial states. Log the distribution of kept initial states and report it.
+- Recovery behaviour only appears where the collector actually recovered. Count the recoveries per T-event task, and add manual recovery demos if they are rare.
 
 ## 5. Measurements
 
@@ -133,8 +160,10 @@ Each stage gates the next.
 
 ## 8. Open decisions (resolve before S0 ends)
 
-- Slow VLM: Gemma 3 27B vs Qwen2.5-VL-32B (licence, vision quality, ease of hidden-state access).
-- Demonstration source for T-event/T-dynamic: scripted controller vs MimicGen-style augmentation of LIBERO demos.
+- ~~Slow VLM~~ (resolved 2026-10-28): `pi05_base` + PaliGemma 2 28B; see §3.
+- ~~Demonstration source~~ (resolved 2026-10-28): teleop seed + bootstrap rollouts; see §4.
+- Collector policy: ACT vs SmolVLA, and whether a RECAP step is worth it.
+- Measured slow-loop latency for P-onboard (backbone only, on the target Jetson) and P-remote.
 - Camera resolution for `full` (LIBERO default vs 128×128), after confirming LIBERO/robosuite control and camera defaults.
 - Compute budget and where VLM inference runs during closed-loop evaluation.
 - Whether to add a mobile-manipulator variant (RoboCasa, with base IMU) as a follow-up. Not part of this experiment.
@@ -153,3 +182,8 @@ _Not started._
 ## Change log
 
 - 2026-10-27: initial design.
+- 2026-10-28 (before any run):
+  - The slow model is now `pi05_base` (base checkpoint only, to avoid LIBERO in-domain skew) plus PaliGemma 2 28B, replacing the Gemma 3 / Qwen candidates.
+  - Added deployment profiles: P-onboard (both loops on one Jetson) and P-remote.
+  - Demonstrations now come from teleop seed episodes plus success-filtered policy rollouts.
+  - No hypothesis, condition or criterion changed.
