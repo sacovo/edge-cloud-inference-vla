@@ -6,7 +6,7 @@
 #SBATCH --clusters=calc-cpu
 #SBATCH --partition=cpu-daily
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=4G
+#SBATCH --mem=12G  # peaks >4 GB on Object tasks (memory grows per demo with hard resets)
 #SBATCH --time=01:00:00
 #SBATCH --job-name=ecvla-a0-quality
 #SBATCH --output=logs/%x_%A_%a.out
