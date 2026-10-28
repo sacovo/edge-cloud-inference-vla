@@ -43,5 +43,8 @@ def bddl_path(dataset_bddl_name: str) -> str:
     return str(Path(get_libero_path("bddl_files")) / rel)
 
 
-def make_env(bddl_file: str, image_size: int = 128) -> OffScreenRenderEnv:
-    return OffScreenRenderEnv(bddl_file_name=bddl_file, camera_heights=image_size, camera_widths=image_size)
+def make_env(bddl_file: str, image_size: int = 128, cameras: bool = True) -> OffScreenRenderEnv:
+    """cameras=False skips image rendering (physics-only passes are then much faster)."""
+    return OffScreenRenderEnv(
+        bddl_file_name=bddl_file, camera_heights=image_size, camera_widths=image_size, use_camera_obs=cameras
+    )
