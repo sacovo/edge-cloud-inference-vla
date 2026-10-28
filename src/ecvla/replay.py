@@ -9,7 +9,8 @@ Two modes:
 
 import numpy as np
 
-SUBSTEP_KEYS = ("time", "joint_torque", "joint_pos", "joint_vel", "ee_force", "ee_torque")
+SUBSTEP_KEYS = ("time", "joint_torque", "joint_pos", "joint_vel", "gripper_qpos", "ee_force", "ee_torque")
+CAMERAS = {"agentview": "agentview_image", "wrist": "robot0_eye_in_hand_image"}
 
 
 class SubstepLogger:
@@ -20,6 +21,7 @@ class SubstepLogger:
         robot = env.robots[0]
         self.qpos_idx = np.asarray(robot._ref_joint_pos_indexes)
         self.qvel_idx = np.asarray(robot._ref_joint_vel_indexes)
+        self.grip_idx = np.asarray(robot._ref_gripper_joint_pos_indexes)
         m = self.sim.model
         self.force_adr = m.sensor_adr[m.sensor_name2id("gripper0_force_ee")]
         self.torque_adr = m.sensor_adr[m.sensor_name2id("gripper0_torque_ee")]
@@ -34,6 +36,7 @@ class SubstepLogger:
         self.buf["joint_torque"].append(d.qfrc_actuator[self.qvel_idx].copy())
         self.buf["joint_pos"].append(d.qpos[self.qpos_idx].copy())
         self.buf["joint_vel"].append(d.qvel[self.qvel_idx].copy())
+        self.buf["gripper_qpos"].append(d.qpos[self.grip_idx].copy())
         self.buf["ee_force"].append(d.sensordata[self.force_adr : self.force_adr + 3].copy())
         self.buf["ee_torque"].append(d.sensordata[self.torque_adr : self.torque_adr + 3].copy())
 
@@ -50,17 +53,24 @@ def object_names(obs: dict) -> list[str]:
     return sorted(k[: -len("_pos")] for k in obs if k.endswith("_pos") and not k.startswith("robot0") and "_to_" not in k)
 
 
-def replay_hybrid(env, states: np.ndarray, actions: np.ndarray) -> dict:
-    """Replay a demo by resetting to each recorded state; log 500 Hz substeps and 20 Hz object poses."""
+def replay_hybrid(env, states: np.ndarray, actions: np.ndarray, render: bool = False) -> dict:
+    """Replay a demo by resetting to each recorded state; log 500 Hz substeps and 20 Hz object poses.
+
+    With render=True, also return camera images rendered from states[t] (aligned with the recorded obs[t]).
+    """
     env.reset()
     log = SubstepLogger(env)
     obs = env.set_init_state(states[0])
     log.take()
     objs = object_names(obs)
     obj_pose, sub, step_err = [], [], []
+    images = {cam: [] for cam in CAMERAS}
     for t in range(len(actions)):
         obs = env.regenerate_obs_from_state(states[t])
         obj_pose.append(np.concatenate([np.r_[obs[f"{o}_pos"], obs[f"{o}_quat"]] for o in objs]))
+        if render:
+            for cam, key in CAMERAS.items():
+                images[cam].append(obs[key])
         log.take()
         env.step(actions[t])
         sub.append(log.take())
@@ -71,6 +81,7 @@ def replay_hybrid(env, states: np.ndarray, actions: np.ndarray) -> dict:
     log.detach()
     substeps = {k: np.concatenate([s[k] for s in sub]) for k in SUBSTEP_KEYS}
     return {
+        "images": {cam: np.asarray(v) for cam, v in images.items()} if render else None,
         "objects": objs,
         "object_pose": np.asarray(obj_pose),
         "substeps": substeps,
