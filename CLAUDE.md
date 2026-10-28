@@ -12,7 +12,10 @@ Read `JOURNAL.md` (latest entries first) before doing anything else.
 ## Commands
 - Env: `uv sync --extra libero --extra dev` (Python ≤3.12; hf-libero 0.1.4, robosuite 1.4.0). Unset `VIRTUAL_ENV` if uv warns about it. Local rendering uses `MUJOCO_GL=egl` (Mesa/ROCm); `src/ecvla/libero_env.py` writes a project-local LIBERO config. Never edit `~/.libero`.
 - LIBERO replay check: `uv run python scripts/a0_replay_check.py <demo.hdf5> --episodes 5`. Original HDF5s with sim states: `yifengzhu-hf/LIBERO-datasets` (not `HuggingFaceVLA/libero`, which has no states). Local data in `data/` (gitignored).
-- HPC: `ssh sandro.covo@calculon.informatik.fhnw.ch`, Slurm; data/cache on `/scratch/sandro.covo/hf`. No conda.
+- HPC: `ssh sandro.covo@calculon.informatik.fhnw.ch`, Slurm; data on `/scratch/sandro.covo/ecvla`, HF cache on `/scratch/sandro.covo/hf`. No conda.
+  - **Login node: git/sbatch/squeue only.** Installs (`sbatch scripts/slurm/setup_env.sbatch`), downloads and sims run as jobs.
+  - Before a large job, test the same sbatch script on `cpu-debug` with a tiny input.
+  - Job env: `scripts/slurm/env.sh` (uv-managed Python, `--extra libero`).
 - Rebuild bibliography: `python3 scripts/merge_bib.py`
 - Verify bibliography: `python3 scripts/verify_bib.py` (must exit 0; queries the arXiv API)
 - A PostToolUse hook (`scripts/hooks/bib_check.sh`) runs both whenever `literature/bib/*.bib` is edited. If it reports a MISMATCH, fix the entry; do not weaken the check.
