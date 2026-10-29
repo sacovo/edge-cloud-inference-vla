@@ -1,0 +1,572 @@
+% Theme 7: Learned filtering and Kalman-inspired mechanisms in learned policies. Verified 2026-10-29.
+% pertsch2025fast (FAST) is cited here but defined in 06-experiment-design.bib.
+
+@article{revach2022kalmannet,
+  author    = {Revach, Guy and Shlezinger, Nir and Ni, Xiaoyong and Escoriza, Adria Lopez and van Sloun, Ruud J. G. and Eldar, Yonina C.},
+  title     = {{KalmanNet}: Neural Network Aided Kalman Filtering for Partially Known Dynamics},
+  journal   = {IEEE Transactions on Signal Processing},
+  volume    = {70},
+  pages     = {1532--1547},
+  year      = {2022},
+  doi       = {10.1109/TSP.2022.3158588},
+  eprint    = {2107.10043},
+  archivePrefix = {arXiv},
+  url       = {https://arxiv.org/abs/2107.10043}
+}
+
+@inproceedings{haarnoja2016backprop,
+  author    = {Haarnoja, Tuomas and Ajay, Anurag and Levine, Sergey and Abbeel, Pieter},
+  title     = {Backprop {KF}: Learning Discriminative Deterministic State Estimators},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2016},
+  eprint    = {1605.07148},
+  archivePrefix = {arXiv},
+  url       = {https://arxiv.org/abs/1605.07148}
+}
+
+@inproceedings{jonschkowski2018differentiable,
+  author    = {Jonschkowski, Rico and Rastogi, Divyam and Brock, Oliver},
+  title     = {Differentiable Particle Filters: End-to-End Learning with Algorithmic Priors},
+  booktitle = {Robotics: Science and Systems (RSS)},
+  year      = {2018},
+  eprint    = {1805.11122},
+  archivePrefix = {arXiv},
+  url       = {https://arxiv.org/abs/1805.11122}
+}
+
+@article{kloss2021how,
+  author    = {Kloss, Alina and Martius, Georg and Bohg, Jeannette},
+  title     = {How to Train Your Differentiable Filter},
+  journal   = {Autonomous Robots},
+  volume    = {45},
+  number    = {4},
+  pages     = {561--578},
+  year      = {2021},
+  doi       = {10.1007/s10514-021-09990-9},
+  eprint    = {2012.14313},
+  archivePrefix = {arXiv},
+  url       = {https://arxiv.org/abs/2012.14313}
+}
+
+@inproceedings{becker2019recurrent,
+  author    = {Becker, Philipp and Pandya, Harit and Gebhardt, Gregor and Zhao, Cheng and Taylor, James and Neumann, Gerhard},
+  title     = {Recurrent Kalman Networks: Factorized Inference in High-Dimensional Deep Feature Spaces},
+  booktitle = {Proceedings of the 36th International Conference on Machine Learning (ICML)},
+  series    = {Proceedings of Machine Learning Research},
+  volume    = {97},
+  year      = {2019},
+  eprint    = {1905.07357},
+  archivePrefix = {arXiv},
+  url       = {https://arxiv.org/abs/1905.07357}
+}
+
+@inproceedings{shaj2020action,
+  author    = {Shaj, Vaisakh and Becker, Philipp and Buchler, Dieter and Pandya, Harit and van Duijkeren, Niels and Taylor, C. James and Hanheide, Marc and Neumann, Gerhard},
+  title     = {Action-Conditional Recurrent Kalman Networks For Forward and Inverse Dynamics Learning},
+  booktitle = {Proceedings of the 2020 Conference on Robot Learning (CoRL)},
+  series    = {Proceedings of Machine Learning Research},
+  volume    = {155},
+  year      = {2020},
+  eprint    = {2010.10201},
+  archivePrefix = {arXiv},
+  url       = {https://arxiv.org/abs/2010.10201}
+}
+
+@inproceedings{shaj2023multi,
+  author    = {Shaj, Vaisakh and Gholam Zadeh, Saleh and Demir, Ozan and Douat, Luiz Ricardo and Neumann, Gerhard},
+  title     = {Multi Time Scale World Models},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2023},
+  eprint    = {2310.18534},
+  archivePrefix = {arXiv},
+  url       = {https://arxiv.org/abs/2310.18534}
+}
+
+@inproceedings{hafner2019learning,
+  author    = {Hafner, Danijar and Lillicrap, Timothy and Fischer, Ian and Villegas, Ruben and Ha, David and Lee, Honglak and Davidson, James},
+  title     = {Learning Latent Dynamics for Planning from Pixels},
+  booktitle = {Proceedings of the 36th International Conference on Machine Learning (ICML)},
+  series    = {Proceedings of Machine Learning Research},
+  volume    = {97},
+  year      = {2019},
+  eprint    = {1811.04551},
+  archivePrefix = {arXiv},
+  url       = {https://arxiv.org/abs/1811.04551}
+}
+
+@inproceedings{schirmer2022modeling,
+  author    = {Schirmer, Mona and Eltayeb, Mazin and Lessmann, Stefan and Rudolph, Maja},
+  title     = {Modeling Irregular Time Series with Continuous Recurrent Units},
+  booktitle = {Proceedings of the 39th International Conference on Machine Learning (ICML)},
+  series    = {Proceedings of Machine Learning Research},
+  volume    = {162},
+  year      = {2022},
+  eprint    = {2111.11344},
+  archivePrefix = {arXiv},
+  url       = {https://arxiv.org/abs/2111.11344}
+}
+
+@inproceedings{igl2018deep,
+  author    = {Igl, Maximilian and Zintgraf, Luisa and Le, Tuan Anh and Wood, Frank and Whiteson, Shimon},
+  title     = {Deep Variational Reinforcement Learning for {POMDPs}},
+  booktitle = {Proceedings of the 35th International Conference on Machine Learning (ICML)},
+  series    = {Proceedings of Machine Learning Research},
+  volume    = {80},
+  year      = {2018},
+  eprint    = {1806.02426},
+  archivePrefix = {arXiv},
+  url       = {https://arxiv.org/abs/1806.02426}
+}
+
+@article{barshalom2002update,
+  author    = {Bar-Shalom, Y.},
+  title     = {Update with out-of-sequence measurements in tracking: exact solution},
+  journal   = {IEEE Transactions on Aerospace and Electronic Systems},
+  volume    = {38},
+  number    = {3},
+  pages     = {769--777},
+  year      = {2002},
+  doi       = {10.1109/TAES.2002.1039398},
+  url       = {https://doi.org/10.1109/TAES.2002.1039398}
+}
+
+@article{barshalom2004onestep,
+  author    = {Bar-Shalom, Y. and Chen, Huimin and Mallick, M.},
+  title     = {One-step solution for the multistep out-of-sequence-measurement problem in tracking},
+  journal   = {IEEE Transactions on Aerospace and Electronic Systems},
+  volume    = {40},
+  number    = {1},
+  pages     = {27--37},
+  year      = {2004},
+  doi       = {10.1109/TAES.2004.1292140},
+  url       = {https://doi.org/10.1109/TAES.2004.1292140}
+}
+
+@inproceedings{larsen1998incorporation,
+  author    = {Larsen, T. D. and Andersen, N. A. and Ravn, O. and Poulsen, N. K.},
+  title     = {Incorporation of time delayed measurements in a discrete-time Kalman filter},
+  booktitle = {Proceedings of the 37th IEEE Conference on Decision and Control (CDC)},
+  volume    = {4},
+  pages     = {3972--3977},
+  year      = {1998},
+  doi       = {10.1109/CDC.1998.761918},
+  url       = {https://doi.org/10.1109/CDC.1998.761918}
+}
+
+@article{walsh2008learning,
+  author    = {Walsh, Thomas J. and Nouri, Ali and Li, Lihong and Littman, Michael L.},
+  title     = {Learning and planning in environments with delayed feedback},
+  journal   = {Autonomous Agents and Multi-Agent Systems},
+  volume    = {18},
+  number    = {1},
+  pages     = {83--105},
+  year      = {2008},
+  doi       = {10.1007/s10458-008-9056-7},
+  url       = {https://doi.org/10.1007/s10458-008-9056-7}
+}
+
+@article{karamzade2024reinforcement,
+  author    = {Karamzade, Armin and Kim, Kyungmin and Kalsi, Montek and Fox, Roy},
+  title     = {Reinforcement Learning from Delayed Observations via World Models},
+  journal   = {Reinforcement Learning Journal},
+  volume    = {5},
+  pages     = {2123--2139},
+  year      = {2024},
+  eprint    = {2403.12309},
+  archivePrefix = {arXiv},
+  url       = {https://arxiv.org/abs/2403.12309}
+}
+
+@inproceedings{wang2024addressing,
+  author    = {Wang, Wei and Han, Dongqi and Luo, Xufang and Li, Dongsheng},
+  title     = {Addressing Signal Delay in Deep Reinforcement Learning},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2024},
+  url       = {https://proceedings.iclr.cc/paper_files/paper/2024/hash/45cc967d7899616f51993b7b363d35b5-Abstract-Conference.html}
+}
+
+@inproceedings{sandha2021sim2real,
+  author    = {Sandha, Sandeep Singh and Garcia, Luis and Balaji, Bharathan and Anwar, Fatima and Srivastava, Mani},
+  title     = {{Sim2Real} Transfer for Deep Reinforcement Learning with Stochastic State Transition Delays},
+  booktitle = {Proceedings of the 2020 Conference on Robot Learning (CoRL)},
+  series    = {Proceedings of Machine Learning Research},
+  volume    = {155},
+  pages     = {1066--1083},
+  year      = {2021},
+  url       = {https://proceedings.mlr.press/v155/sandha21a.html}
+}
+
+@misc{agarwal2022deep,
+  author    = {Agarwal, Shivangi and Kaul, Sanjit K. and Anand, Saket and Sujit, P. B.},
+  title     = {A Deep Learning Approach To Estimation Using Measurements Received Over a Network},
+  year      = {2022},
+  eprint    = {2201.08020},
+  archivePrefix = {arXiv},
+  url       = {https://arxiv.org/abs/2201.08020}
+}
+
+
+Notes on the BibTeX:
+- **Authors and titles** are copied from the arXiv API, or from Crossref for the DOI-only works. Crossref gives Bar-Shalom04 co-author "Huimin Chen" as a single-name field, rendered here as "Chen, Huimin".
+- **Walsh08:** Crossref "issued" is 2008-07 (online first). Semantic Scholar lists 2009 for the print issue.
+- **Sandha:** PMLR gives 2021 for the CoRL 2020 volume.
+- **shaj2020action:** the arXiv API spells the third author "Dieter Buchler" without the umlaut; kept as returned.
+
+@article{willsky1976survey,
+  author    = {Willsky, Alan S.},
+  title     = {A survey of design methods for failure detection in dynamic systems},
+  journal   = {Automatica},
+  volume    = {12},
+  number    = {6},
+  pages     = {601--611},
+  year      = {1976},
+  doi       = {10.1016/0005-1098(76)90041-8},
+  url       = {https://doi.org/10.1016/0005-1098(76)90041-8}
+}
+
+@article{wolpert1995internal,
+  author    = {Wolpert, Daniel M. and Ghahramani, Zoubin and Jordan, Michael I.},
+  title     = {An Internal Model for Sensorimotor Integration},
+  journal   = {Science},
+  volume    = {269},
+  number    = {5232},
+  pages     = {1880--1882},
+  year      = {1995},
+  doi       = {10.1126/science.7569931},
+  url       = {https://doi.org/10.1126/science.7569931}
+}
+
+@article{park2018lstmvae,
+  author    = {Park, Daehyung and Hoshi, Yuuna and Kemp, Charles C.},
+  title     = {A Multimodal Anomaly Detector for Robot-Assisted Feeding Using an {LSTM}-Based Variational Autoencoder},
+  journal   = {IEEE Robotics and Automation Letters},
+  volume    = {3},
+  number    = {3},
+  pages     = {1544--1551},
+  year      = {2018},
+  doi       = {10.1109/LRA.2018.2801475},
+  eprint    = {1711.00614},
+  archivePrefix = {arXiv},
+  url       = {https://arxiv.org/abs/1711.00614}
+}
+
+@article{grambow2026anomaly,
+  author    = {Grambow, Niklas and Fenner, Lisa-Marie and Kempkes, Felipe and Hotz, Philip and Wan, Dingyuan and Kr{\"u}ger, J{\"o}rg and Haninger, Kevin},
+  title     = {Anomaly detection for generic failure monitoring in robotic assembly, screwing and manipulation},
+  journal   = {IEEE Robotics and Automation Letters},
+  volume    = {11},
+  number    = {4},
+  pages     = {4737--4744},
+  year      = {2026},
+  doi       = {10.1109/LRA.2026.3664647},
+  eprint    = {2509.26308},
+  archivePrefix = {arXiv},
+  url       = {https://arxiv.org/abs/2509.26308}
+}
+
+@inproceedings{agia2024unpacking,
+  author    = {Agia, Christopher and Sinha, Rohan and Yang, Jingyun and Cao, Zi-ang and Antonova, Rika and Pavone, Marco and Bohg, Jeannette},
+  title     = {Unpacking Failure Modes of Generative Policies: Runtime Monitoring of Consistency and Progress},
+  booktitle = {Proceedings of The 8th Conference on Robot Learning (CoRL)},
+  series    = {PMLR},
+  volume    = {270},
+  pages     = {689--723},
+  year      = {2024},
+  eprint    = {2410.04640},
+  archivePrefix = {arXiv},
+  url       = {https://arxiv.org/abs/2410.04640}
+}
+
+@inproceedings{xu2025faildetect,
+  author    = {Xu, Chen and Nguyen, Tony Khuong and Dixon, Emma and Rodriguez, Christopher and Miller, Patrick and Lee, Robert and Shah, Paarth and Ambrus, Rares and Nishimura, Haruki and Itkina, Masha},
+  title     = {Can We Detect Failures Without Failure Data? Uncertainty-Aware Runtime Failure Detection for Imitation Learning Policies},
+  booktitle = {Robotics: Science and Systems (RSS)},
+  year      = {2025},
+  doi       = {10.15607/RSS.2025.XXI.073},
+  eprint    = {2503.08558},
+  archivePrefix = {arXiv},
+  url       = {https://arxiv.org/abs/2503.08558}
+}
+
+@misc{gao2026impact,
+  author    = {Gao, Jiawei and Liu, Chaoqi and Wu, Peilin and Chen, Haonan and Du, Yilun},
+  title     = {{IMPACT}: Learning Internal-Model Predictive Control for Forceful Robotic Manipulation},
+  year      = {2026},
+  eprint    = {2606.10818},
+  archivePrefix = {arXiv},
+  url       = {https://arxiv.org/abs/2606.10818}
+}
+
+@misc{ding2026cwwam,
+  author    = {Ding, Houzhu and Qi, Xinda and Wang, Luqi and Yang, Ming},
+  title     = {{CW-WAM}: A Structured Contact-Wrench World Action Model for Force-Sensitive Manipulation},
+  year      = {2026},
+  eprint    = {2610.30117},
+  archivePrefix = {arXiv},
+  url       = {https://arxiv.org/abs/2610.30117}
+}
+
+@article{tabuada2007event,
+  author    = {Tabuada, Paulo},
+  title     = {Event-Triggered Real-Time Scheduling of Stabilizing Control Tasks},
+  journal   = {IEEE Transactions on Automatic Control},
+  volume    = {52},
+  number    = {9},
+  pages     = {1680--1685},
+  year      = {2007},
+  doi       = {10.1109/TAC.2007.904277},
+  url       = {https://doi.org/10.1109/TAC.2007.904277}
+}
+
+@misc{trimpe2017distributed,
+  author    = {Trimpe, Sebastian},
+  title     = {Distributed Event-based State Estimation},
+  year      = {2017},
+  eprint    = {1511.05223},
+  archivePrefix = {arXiv},
+  url       = {https://arxiv.org/abs/1511.05223},
+  note      = {Published as ``Event-based state estimation: an emulation-based approach'', IET Control Theory \& Applications 11(11):1684--1693, 2017, doi:10.1049/iet-cta.2016.1021}
+}
+
+@article{solowjow2020etl,
+  author    = {Solowjow, Friedrich and Trimpe, Sebastian},
+  title     = {Event-triggered Learning},
+  journal   = {Automatica},
+  volume    = {117},
+  pages     = {109009},
+  year      = {2020},
+  doi       = {10.1016/j.automatica.2020.109009},
+  eprint    = {1904.03042},
+  archivePrefix = {arXiv},
+  url       = {https://arxiv.org/abs/1904.03042}
+}
+
+@inproceedings{baumann2018drletc,
+  author    = {Baumann, Dominik and Zhu, Jia-Jie and Martius, Georg and Trimpe, Sebastian},
+  title     = {Deep Reinforcement Learning for Event-Triggered Control},
+  booktitle = {IEEE Conference on Decision and Control (CDC)},
+  pages     = {943--950},
+  year      = {2018},
+  doi       = {10.1109/CDC.2018.8619335},
+  eprint    = {1809.05152},
+  archivePrefix = {arXiv},
+  url       = {https://arxiv.org/abs/1809.05152}
+}
+
+@inproceedings{honda2024replan,
+  author    = {Honda, Kohei and Yonetani, Ryo and Nishimura, Mai and Kozuno, Tadashi},
+  title     = {When to Replan? An Adaptive Replanning Strategy for Autonomous Navigation using Deep Reinforcement Learning},
+  booktitle = {IEEE International Conference on Robotics and Automation (ICRA)},
+  pages     = {6650--6656},
+  year      = {2024},
+  doi       = {10.1109/ICRA57147.2024.10611474},
+  eprint    = {2304.12046},
+  archivePrefix = {arXiv},
+  url       = {https://arxiv.org/abs/2304.12046}
+}
+
+@inproceedings{ren2023knowno,
+  author    = {Ren, Allen Z. and Dixit, Anushri and Bodrova, Alexandra and Singh, Sumeet and Tu, Stephen and Brown, Noah and Xu, Peng and Takayama, Leila and Xia, Fei and Varley, Jake and Xu, Zhenjia and Sadigh, Dorsa and Zeng, Andy and Majumdar, Anirudha},
+  title     = {Robots That Ask For Help: Uncertainty Alignment for Large Language Model Planners},
+  booktitle = {Proceedings of The 7th Conference on Robot Learning (CoRL)},
+  series    = {PMLR},
+  volume    = {229},
+  pages     = {661--682},
+  year      = {2023},
+  eprint    = {2307.01928},
+  archivePrefix = {arXiv},
+  url       = {https://arxiv.org/abs/2307.01928}
+}
+
+@misc{yang2026tud,
+  author    = {Yang, Hyemin and Jeong, Wooseong and Lee, Giwon and Yoon, Kuk-Jin},
+  title     = {Triggering Generalist Reasoning via Predictive Uncertainty for Dual-System {VLA}},
+  year      = {2026},
+  eprint    = {2610.05025},
+  archivePrefix = {arXiv},
+  url       = {https://arxiv.org/abs/2610.05025}
+}
+
+@misc{liang2026aac,
+  author    = {Liang, Yuanchang and Wang, Xiaobo and Wang, Kai and Wang, Shuo and Peng, Xiaojiang and Chen, Haoyu and Chua, David Kim Huat and Vadakkepat, Prahlad},
+  title     = {Adaptive Action Chunking at Inference-time for Vision-Language-Action Models},
+  year      = {2026},
+  eprint    = {2604.04161},
+  archivePrefix = {arXiv},
+  url       = {https://arxiv.org/abs/2604.04161}
+}
+
+
+Notes on the BibTeX:
+- `yang2026tud` and `liang2026aac` are kept as `@misc`. Their NeurIPS 2026 and CVPR 2026 venues come only from the arXiv comments.
+- `trimpe2017distributed` uses the arXiv title, so that `verify_bib.py` matches it. The published IET title is in `note`.
+- Keys use a short descriptor, not the first title word, wherever the first word is generic (e.g. `xu2025faildetect`). Rename them if the merge script requires the strict `<lastname><year><word>` form.
+
+@misc{silver2018residual,
+  author        = {Silver, Tom and Allen, Kelsey and Tenenbaum, Josh and Kaelbling, Leslie},
+  title         = {{Residual Policy Learning}},
+  year          = {2018},
+  eprint        = {1812.06298},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.RO},
+  url           = {https://arxiv.org/abs/1812.06298}
+}
+
+@inproceedings{johannink2019residual,
+  author        = {Johannink, Tobias and Bahl, Shikhar and Nair, Ashvin and Luo, Jianlan and Kumar, Avinash and Loskyll, Matthias and Aparicio Ojea, Juan and Solowjow, Eugen and Levine, Sergey},
+  title         = {{Residual Reinforcement Learning for Robot Control}},
+  booktitle     = {2019 International Conference on Robotics and Automation (ICRA)},
+  pages         = {6023--6029},
+  year          = {2019},
+  doi           = {10.1109/ICRA.2019.8794127},
+  eprint        = {1812.03201},
+  archivePrefix = {arXiv},
+  url           = {https://arxiv.org/abs/1812.03201}
+}
+
+@inproceedings{yuan2025policy,
+  author        = {Yuan, Xiu and Mu, Tongzhou and Tao, Stone and Fang, Yunhao and Zhang, Mengke and Su, Hao},
+  title         = {{Policy Decorator: Model-Agnostic Online Refinement for Large Policy Model}},
+  booktitle     = {International Conference on Learning Representations (ICLR)},
+  year          = {2025},
+  eprint        = {2412.13630},
+  archivePrefix = {arXiv},
+  url           = {https://arxiv.org/abs/2412.13630}
+}
+
+@inproceedings{ankile2025imitation,
+  author        = {Ankile, Lars and Simeonov, Anthony and Shenfeld, Idan and Torne, Marcel and Agrawal, Pulkit},
+  title         = {{From Imitation to Refinement -- Residual RL for Precise Assembly}},
+  booktitle     = {2025 IEEE International Conference on Robotics and Automation (ICRA)},
+  year          = {2025},
+  doi           = {10.1109/ICRA55743.2025.11127442},
+  eprint        = {2407.16677},
+  archivePrefix = {arXiv},
+  url           = {https://arxiv.org/abs/2407.16677}
+}
+
+@inproceedings{ankile2026residual,
+  author        = {Ankile, Lars and Jiang, Zhenyu and Duan, Rocky and Shi, Guanya and Abbeel, Pieter and Nagabandi, Anusha},
+  title         = {{Residual Off-Policy RL for Finetuning Behavior Cloning Policies}},
+  booktitle     = {2026 IEEE International Conference on Robotics and Automation (ICRA)},
+  pages         = {5789--5796},
+  year          = {2026},
+  doi           = {10.1109/ICRA57385.2026.11695959},
+  eprint        = {2509.19301},
+  archivePrefix = {arXiv},
+  url           = {https://arxiv.org/abs/2509.19301}
+}
+
+@inproceedings{xiao2026selfimproving,
+  author        = {Xiao, Wenli and Lin, Haotian and Peng, Andy and Xue, Haoru and He, Tairan and Xie, Yuqi and Hu, Fengyuan and Wu, Jimmy and Luo, Zhengyi and Fan, Linxi ``Jim'' and Shi, Guanya and Zhu, Yuke},
+  title         = {{Self-Improving Vision-Language-Action Models with Data Generation via Residual RL}},
+  booktitle     = {International Conference on Learning Representations (ICLR)},
+  year          = {2026},
+  eprint        = {2511.00091},
+  archivePrefix = {arXiv},
+  url           = {https://arxiv.org/abs/2511.00091}
+}
+
+@misc{deng2026residual,
+  author        = {Deng, Kaize and Yang, Zewen},
+  title         = {{Residual Reinforcement Learning for Robot Teleoperation under Stochastic Delays}},
+  year          = {2026},
+  eprint        = {2605.15480},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.RO},
+  url           = {https://arxiv.org/abs/2605.15480},
+  note          = {Accepted at 23rd IFAC World Congress 2026 (per arXiv comment); Tier 3}
+}
+
+@misc{mompoalepuz2025learning,
+  author        = {Momp{\'o} Alepuz, Adri{\`a} and Papageorgiou, Dimitrios and Tolu, Silvia},
+  title         = {{Learning-based Delay Compensation for Enhanced Control of Assistive Soft Robots}},
+  year          = {2025},
+  eprint        = {2504.12428},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.RO},
+  url           = {https://arxiv.org/abs/2504.12428}
+}
+
+@article{chen2021delay,
+  author        = {Chen, Baiming and Xu, Mengdi and Li, Liang and Zhao, Ding},
+  title         = {{Delay-aware model-based reinforcement learning for continuous control}},
+  journal       = {Neurocomputing},
+  volume        = {450},
+  pages         = {119--128},
+  year          = {2021},
+  doi           = {10.1016/j.neucom.2021.04.015},
+  eprint        = {2005.05440},
+  archivePrefix = {arXiv},
+  url           = {https://arxiv.org/abs/2005.05440}
+}
+
+@article{tagliabue2024efficient,
+  author        = {Tagliabue, Andrea and How, Jonathan P.},
+  title         = {{Efficient Deep Learning of Robust Policies From MPC Using Imitation and Tube-Guided Data Augmentation}},
+  journal       = {IEEE Transactions on Robotics},
+  volume        = {40},
+  pages         = {4301--4321},
+  year          = {2024},
+  doi           = {10.1109/TRO.2024.3431988},
+  eprint        = {2306.00286},
+  archivePrefix = {arXiv},
+  url           = {https://arxiv.org/abs/2306.00286}
+}
+
+@inproceedings{koller2018learning,
+  author        = {Koller, Torsten and Berkenkamp, Felix and Turchetta, Matteo and Krause, Andreas},
+  title         = {{Learning-Based Model Predictive Control for Safe Exploration}},
+  booktitle     = {2018 IEEE Conference on Decision and Control (CDC)},
+  pages         = {6059--6066},
+  year          = {2018},
+  doi           = {10.1109/CDC.2018.8619572},
+  eprint        = {1803.08287},
+  archivePrefix = {arXiv},
+  url           = {https://arxiv.org/abs/1803.08287}
+}
+
+@article{jenelten2024dtc,
+  author        = {Jenelten, Fabian and He, Junzhe and Farshidian, Farbod and Hutter, Marco},
+  title         = {{DTC: Deep Tracking Control}},
+  journal       = {Science Robotics},
+  volume        = {9},
+  number        = {86},
+  pages         = {eadh5401},
+  year          = {2024},
+  doi           = {10.1126/scirobotics.adh5401},
+  eprint        = {2309.15462},
+  archivePrefix = {arXiv},
+  url           = {https://arxiv.org/abs/2309.15462}
+}
+
+@inproceedings{kaufmann2020deep,
+  author        = {Kaufmann, Elia and Loquercio, Antonio and Ranftl, Ren{\'e} and M{\"u}ller, Matthias and Koltun, Vladlen and Scaramuzza, Davide},
+  title         = {{Deep Drone Acrobatics}},
+  booktitle     = {Robotics: Science and Systems XVI},
+  year          = {2020},
+  doi           = {10.15607/RSS.2020.XVI.040},
+  eprint        = {2006.05768},
+  archivePrefix = {arXiv},
+  url           = {https://arxiv.org/abs/2006.05768}
+}
+
+@inproceedings{gu2024rttrajectory,
+  author        = {Gu, Jiayuan and Kirmani, Sean and Wohlhart, Paul and Lu, Yao and Gonzalez Arenas, Montserrat and Rao, Kanishka and Yu, Wenhao and Fu, Chuyuan and Gopalakrishnan, Keerthana and Xu, Zhuo and Sundaresan, Priya and Xu, Peng and Su, Hao and Hausman, Karol and Finn, Chelsea and Vuong, Quan and Xiao, Ted},
+  title         = {{RT-Trajectory: Robotic Task Generalization via Hindsight Trajectory Sketches}},
+  booktitle     = {International Conference on Learning Representations (ICLR)},
+  year          = {2024},
+  eprint        = {2311.01977},
+  archivePrefix = {arXiv},
+  url           = {https://arxiv.org/abs/2311.01977}
+}
+
+@inproceedings{zhou2025beast,
+  author        = {Zhou, Hongyi and Liao, Weiran and Huang, Xi and Tang, Yucheng and Otto, Fabian and Jia, Xiaogang and Jiang, Xinkai and Hilber, Simon and Li, Ge and Wang, Qian and Ya{\u{g}}murlu, {\"O}mer Erdin{\c{c}} and Blank, Nils and Reuss, Moritz and Lioutikov, Rudolf},
+  title         = {{BEAST: Efficient Tokenization of B-Splines Encoded Action Sequences for Imitation Learning}},
+  booktitle     = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year          = {2025},
+  eprint        = {2506.06072},
+  archivePrefix = {arXiv},
+  url           = {https://arxiv.org/abs/2506.06072}
+}

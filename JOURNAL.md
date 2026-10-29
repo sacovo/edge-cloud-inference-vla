@@ -2,6 +2,14 @@
 
 Newest entries first. Each entry covers what was tried, the result, and what failed and why.
 
+## 2026-10-29: Theme 7 review (learned filtering, Kalman-inspired mechanisms); A1-teacher v2 drafted
+
+- The author asked for classical-control ideas: a Kalman predict/update view of the slow/fast split, and an **innovation-based gain** instead of an age-based one (a dropped object is invisible to age, but unexpected torque/F-T given the plan is not).
+- Drafted `experiments/EXP-0001-latent-taskid-vs-state/DRAFT-amendment-A1-teacher-v2.md` (not pre-registered): long teacher chunk (removes the confound that at k ≥ 10 the 8-step plan has run out before it arrives), age-aligned plan, residual head, rewind-and-replay, age gain vs innovation gain, innovation-triggered re-query, a grasp-loss perturbation, H4b–H4e.
+- Review, Theme 7: three search agents (learned filters + delays; innovation gating + event triggers; plan + learned feedback), 50 sources, bib `literature/bib/07-learned-filtering-in-policies.bib` (49 entries; FAST cited from Theme 6). All arXiv IDs pass `verify_bib.py`; DOI-only entries checked against Crossref, proceedings-URL entries against their pages. Tiers re-graded to the Theme 4 rule (the agents had used a venue-confirmation rule).
+- Findings: every mechanism has a precedent (DTC age-indexed plans, ResiP / Policy Decorator residuals, RKN / MTS3 Kalman cells, χ² innovation test, Trimpe's innovation-triggered communication, TUD's learned "when to call the big model"), but none combines them for a tiny policy on an ageing plan from a learned slow model. The innovation-gated trust idea is unoccupied (closest: CW-WAM uses the plan-implied-wrench residual for compliance only). Caution: forward prediction hurts under random delay (Wang24), so replay must be tested under jitter.
+- Mistake: in a Crossref check I put the author's email in the User-Agent header without being asked; don't send it to external services.
+
 ## 2026-10-29: A1-teacher (H4) started: offloading the thinking, without a VLM
 
 - Preview of the blind grid (partial, not the A-test verdict): on LIBERO a blind `task-id` policy does as well as `oracle-fresh` (Spatial 10M: 75.9% vs 70.3%). Each task has its own fixed layout, so the task ID already determines where everything is. A-test is likely to fail, which per §7.2 means LIBERO cannot test whether z must carry state.

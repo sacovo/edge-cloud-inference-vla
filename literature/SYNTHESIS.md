@@ -175,3 +175,13 @@ Ordered so each step is cheap and de-risks the next.
 - The 2026 literature is moving fast. Re-run the searches in [`SEARCH_LOG.md`](SEARCH_LOG.md) before writing a paper.
 
 *AI disclosure: search, screening, extraction and synthesis were done with Claude (Anthropic) agents through Claude Code and the ARS deep-research plugin, under the author's direction. References were checked for existence by script. Content claims need author verification.*
+
+## 8. Addendum (2026-10-29): Theme 7, learned filtering and Kalman-inspired mechanisms
+
+Added after the first EXP-0001 A1-teacher results; see `themes/07-learned-filtering-in-policies.md` (50 sources, all verified).
+
+- **Each mechanism has a precedent; the combination has none.** Age-indexed plans with variable update periods ([jenelten2024dtc] Fig. 7A), zero-initialised residuals on chunked and VLA bases ([ankile2025imitation], [yuan2025policy]), Kalman-structured learned cells ([becker2019recurrent], [shaj2023multi] Eq. 6), the χ² innovation test ([willsky1976survey] Sec. VII) and innovation-triggered communication ([trimpe2017distributed] Eq. 13, 19). None of the included sources combines them for a tiny policy tracking an ageing plan from a learned slow model.
+- **New gap G10: innovation-gated trust in a remote plan.** Learned trust signals come from the policy's own outputs ([agia2024unpacking], [xu2025faildetect], [yang2026tud]). The residual between plan-implied and measured force/torque is used for compliance ([ding2026cwwam]) or to gate learning ([gao2026impact]), never to down-weight a stale slow-model plan or trigger a re-query.
+- **New gap G11: residual feedback around an ageing plan.** In every residual-policy paper the base action is fresh (Theme 7, Sec. 1); learned delay handling excludes out-of-order arrival and jitter, and explicit forward prediction hurts under random delay ([wang2024addressing] Sec. 5).
+- **Implication:** these gaps define the draft EXP-0001 amendment A1-teacher v2 (`experiments/EXP-0001-latent-taskid-vs-state/DRAFT-amendment-A1-teacher-v2.md`); Theme 7 Sec. 3 lists the changes the literature suggests.
+

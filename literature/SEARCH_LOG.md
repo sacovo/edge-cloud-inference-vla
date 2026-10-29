@@ -152,3 +152,76 @@ Counts: about 22 query/fetch rounds, about 40 candidate records seen, 24 include
 
 **Totals:** 30 Part A sources and 17 Part B testbeds verified and included. 12 items are listed under "Unverified / excluded".
 
+## 07-learned-filtering-in-policies
+
+Search date: 2026-10-29.
+
+Rows are prefixed by slice: A = learned filters + delays, B = innovation gating + event triggers, C = plan + learned feedback.
+
+| # | Query / action | Tool | Useful hits |
+|---|---|---|---|
+| A1 | Read `literature/PROTOCOL.md`, Theme 4 (format), Theme 2 bib titles (to avoid duplicates) | Read/grep | Theme 2 already holds Derman21 (delayed MDP) and Ramstedt21 (DCAC, random delays): not repeated here |
+| A2 | arXiv API id_list batch: 2107.10043, 1605.07148, 1805.11122, 1805.08975, 1511.05121, 1605.06432, 1905.07357, 1811.04551, 2012.14313, 2010.10201, 2310.18534, 2111.11344, 1806.02426, 2005.05440, 1810.07286, 2403.12309, 2205.05569 | curl + arXiv API | All 17 resolved. Metadata copied from API (titles, authors, comments/journal_ref/DOI) |
+| A3 | Crossref `query.bibliographic`: "Update with out-of-sequence measurements in tracking: exact solution" | Crossref API | 10.1109/taes.2002.1039398 (TAES 38(3) 2002); SPIE 2000 conference version 10.1117/12.392006 |
+| A4 | Crossref: "Incorporation of time delayed measurements in a discrete-time Kalman filter" | Crossref API | 10.1109/cdc.1998.761918 (37th CDC, vol. 4, pp. 3972–3977) |
+| A5 | Crossref: "Optimal update with out-of-sequence measurements" (Zhang, Li, Zhu) | Crossref API | 10.1109/tsp.2005.847830 (verified, excluded) |
+| A6 | Crossref: "One-step solution for the multistep out-of-sequence-measurement problem in tracking" | Crossref API | 10.1109/taes.2004.1292140 (TAES 40(1) 2004) |
+| A7 | Crossref: "Markov decision processes with delays and asynchronous cost collection" | Crossref API | 10.1109/tac.2003.809799 (verified, excluded) |
+| A8 | Crossref: "Learning and planning in environments with delayed feedback" | Crossref API | 10.1007/s10458-008-9056-7 (AAMAS journal 18(1) 2008) |
+| A9 | "neural network Kalman filter out-of-sequence measurements delayed measurements learning arXiv" | WebSearch | arXiv:2201.08020 (LSTM estimator with age-of-information input); Stone Soup OOSM docs (grey, not used) |
+| A10 | "Addressing Signal Delay in Deep Reinforcement Learning ICLR 2024 arXiv" | WebSearch + ICLR proceedings page | ICLR 2024 proceedings entry (no arXiv version found, see #12) |
+| A11 | "learned policy observation delay compensation robot state history replay predictor sim-to-real latency" | WebSearch | TSRL (Sandha et al., CoRL 2020, PMLR 155); DA-DP, KRLST/LDN soft-robot delay compensation (2504.12428) surfaced, not assessed |
+| A12 | arXiv search `all:"signal delay" AND all:reinforcement`; `ti:"Sim2Real Transfer" AND ti:delays` | arXiv API | No arXiv copy of Wang24 or Sandha20. Surfaced 2603.01553 (State-Action Inpainting Diffuser, same group as Wang24) and 2209.15216 (time delay in sim2real) |
+| A13 | ICLR proceedings page for Wang24; PMLR v155 page for Sandha20 | WebFetch | Title, authors, venue, abstract confirmed |
+| A14 | Full-text PDF download + pdftotext for 12 arXiv papers + Wang24 + Sandha20 | curl/pdftotext | 14 full texts |
+| A15 | Crossref works/<doi> for KalmanNet (TSP 70:1532–1547), Kloss (Auton. Robots 45(4):561–578), Bar-Shalom02, Larsen98, Walsh08 | Crossref API | Venues confirmed; Crossref holds no abstracts for the IEEE/Springer items |
+| A16 | Semantic Scholar by DOI (abstracts) | S2 API | Larsen98: open-access pointer to DTU Orbit; Walsh08/Bar-Shalom02 abstracts elided |
+| A17 | DTU Orbit record for Larsen98 | WebFetch | Abstract retrieved; PDF download blocked (bot check) |
+| A18 | Bar-Shalom 2002 / 2004 abstracts | WebSearch (×2), SPIE and IEEE pages (WebFetch returned empty) | Abstract text only via search snippets |
+| A19 | MathWorks "Handle out-of-sequence measurements with filter retrodiction" | WebFetch | Vendor doc comparing reprocessing vs retrodiction (grey, not included; cited in notes only) |
+| A20 | Walsh et al. abstract | WebSearch | Abstract summary via indexer (Springer page redirects to login) |
+| A21 | Venue checks: PMLR v97 (PlaNet, RKN), v80 (DVRL), v162 (CRU), v155 (ac-RKN), RSS 2018 index (DPF), NeurIPS 2016 (BKF), NeurIPS 2023 (MTS3) proceedings index pages | curl + grep | All 8 titles found on the official proceedings index |
+| A22 | "Karamzade ... RLC 2024 OR Reinforcement Learning Journal"; RLJ volume page | WebSearch + curl | RLJ vol. 5, pp. 2123–2139, 2024 confirmed on rlj.org |
+| A23 | dblp API venue lookups | curl | Blocked (bot challenge), so replaced by #21 |
+| B1 | Read `literature/PROTOCOL.md`, Theme 4 entries and bib, and the bib keys of all themes (to avoid duplicates) | Bash | Format reference. DP-VLA (event-triggered slow calls) is already in Theme 1, and ActECC replanning is already in Theme 2 |
+| B2 | "adaptive inference frequency vision-language-action model when to re-query trigger replanning 2025 arXiv" | WebSearch (extended) | 2604.04161 (AAC), 2510.01389 (INSIGHT), 2608.06434, 2604.02965 |
+| B3 | "learned forward model predict wrist force torque anomaly detection manipulation failure slip LSTM-VAE" | WebSearch | 2011.05817 (FINO-Net), 2509.26308 (Grambow et al.), 2209.06019 (proactive slip) |
+| B4 | "event-triggered learning Solowjow Trimpe arXiv; event-based state estimation innovation triggering Trimpe D'Andrea" | WebSearch | 1904.03042, 1511.05223, TAC 2014 variance-based triggering |
+| B5 | arXiv API batch (16 IDs): 1904.03042, 1511.05223, 1809.05152, 2107.10043, 1711.00614, 2011.05817, 2509.26308, 2410.04640, 2503.08558, 2604.04161, 2608.06434, 2304.12046, 2307.01928, 2510.01389, 2209.06019, 2604.02965 | curl, arXiv API | All 16 resolved; titles and authors copied |
+| B6 | Crossref bibliographic search: Tabuada 2007; Heemels/Johansson/Tabuada 2012; Trimpe & D'Andrea 2014; Mehra & Peschon 1971; Bar-Shalom et al.; Haddadin et al. 2017; Wolpert et al. 1995; Willsky 1976 | curl, Crossref | All 8 DOIs resolved |
+| B7 | "learning when to query large model planner robot fast policy decides to call slow VLM uncertainty-triggered arXiv" | WebSearch (extended) | 2610.05025 (TUD), 2608.23224 (TOWN-VLA), 2606.20458, 2606.16995 |
+| B8 | "proprioceptive prediction error detect slip or collision learned forward dynamics model ... residual torque neural network" | WebSearch | Only general hits; led to the Heo et al. RA-L 2019 Crossref lookup |
+| B9 | arXiv API: 2610.05025, 2608.23224, 2606.20458, 2606.16995; Crossref: Heo et al. 2019 | curl | Resolved |
+| B10 | Full text: TUD 2610.05025v2, Sentinel 2410.04640v2, FAIL-Detect 2503.08558v3 | WebFetch (arXiv HTML) | Read |
+| B11 | Full text: AAC 2604.04161v2, TOWN-VLA 2608.23224v1, Event-triggered learning (ar5iv 1904.03042), DRL for ETC (ar5iv 1809.05152) | WebFetch | Read. TOWN-VLA excluded because its trigger is oracle/label-based |
+| B12 | Crossref venue checks: Baumann CDC 2018, Honda ICRA 2024, Park RA-L 2018, FINO-Net IROS 2021, FAIL-Detect RSS 2025; PMLR v229 (KnowNo) and v270 (Sentinel) index pages | curl | All venues confirmed |
+| B13 | Full text: Park LSTM-VAE (arXiv HTML), Grambow et al. (arXiv HTML), KalmanNet (arXiv HTML), Honda et al. (arXiv HTML) | WebFetch | Read |
+| B14 | "Failure Prediction at Runtime for Generative Robot Policies" | WebSearch + arXiv API | 2510.09459 (FIPER, NeurIPS 2025) verified, not assessed |
+| B15 | Crossref + Semantic Scholar abstracts for the classical DOI works | curl | Abstract only for Wolpert 1995. IEEE/Elsevier abstracts elided. Open-access links for Tabuada, Heemels (KTH DiVA), Haddadin (Sapienza postprint), Willsky (NASA NTRS tech report) |
+| B16 | Downloaded Tabuada (UCLA PDF) and Willsky (NASA NTRS ESL-P-633 tech-report version) and ran pdftotext | curl + pdftotext | Read. The Haddadin postprint and the Heemels DiVA link returned HTML or a bot wall, so they were not read |
+| B17 | doi.org → ieeexplore pages for Trimpe 2014, Heemels 2012, Haddadin 2017 | WebFetch | Empty pages. IEEE scraping was not pursued (blocked by a permission rule) |
+| B18 | arXiv PDF of 1511.05223 (Trimpe), via pdftotext | WebFetch + pdftotext | Read. The PDF states the IET CTA DOI. Crossref confirms the retitled published version |
+| B19 | "Heemels Johansson Tabuada 2012 ... pdf" and the bibbase page | WebSearch + WebFetch | No abstract or full text found; 2009.12783 (ML-in-ETC survey) surfaced |
+| B20 | "robot manipulation learned model predicts expected force torque ... prediction error policy re-planning arXiv" | WebSearch (extended) | 2610.30117 (CW-WAM), 2606.10818 (IMPACT), 2606.12406 (FACTR 2), 2608.21592 |
+| B21 | Full text: CW-WAM 2610.30117, IMPACT 2606.10818; arXiv API for both; KnowNo abstract page | WebFetch + curl | Read |
+| C1 | Read `PROTOCOL.md`, Theme 4 format; grep all arXiv IDs and keys in `themes/*.md` for overlap | Bash | Overlap list (≈150 IDs); A2C2, RTC, SFP, VLASH, AsyncShield, RDP already covered |
+| C2 | grep themes for "residual\|smith\|tube\|DCT\|B-spline\|movement primitive\|waypoint" | Bash | Only A2C2 / ACNet / FutureRTC residual heads (Theme 2); Neural Lander excluded in Theme 3 |
+| C3 | "Policy Decorator residual policy model-agnostic online refinement large policy arXiv" | WebSearch | 2412.13630 (ICLR 2025) |
+| C4 | "demonstration-efficient guided policy search imitation of robust tube MPC Tagliabue arXiv" | WebSearch | 2109.09910 (ICRA 2022 submission); 2306.00286 (T-RO 2024); 2210.10127 |
+| C5 | "DTC deep tracking control model-based planning reinforcement learning legged Jenelten arXiv" | WebSearch | 2309.15462 (Sci. Robot. 2024) |
+| C6 | "BEAST B-spline encoded action sequence tokenizer imitation learning arXiv" | WebSearch | 2506.06072 (NeurIPS 2025) |
+| C7 | "learned Smith predictor neural network delay compensation robot teleoperation reinforcement learning arXiv" | WebSearch | 2605.15480 (residual RL, stochastic delay); 2504.12428 (learned Smith predictor) |
+| C8 | "residual policy on top of vision-language-action model actions lightweight correction real-time arXiv 2025" | WebSearch | PLD 2511.00091; VLA-Corrector; J-PARC 2607.01804 |
+| C9 | "high-level policy waypoints low-level learned tracking controller hierarchical manipulation ... plan-conditioned" | WebSearch | HiWET 2602.06341, LaCoLoco, 2506.22827 (surfaced only) |
+| C10 | "delay-aware model-based reinforcement learning continuous control arXiv Chen" | WebSearch | 2005.05440 (Neurocomputing 2021) |
+| C11 | "ProDMP probabilistic dynamic movement primitives deep learning arXiv; movement primitive diffusion" | WebSearch | ProDMP 2210.01531; MPD 2312.10008 (RA-L 2024) |
+| C12 | "continuous-time action chunk spline evaluated arbitrary time inference latency robot policy arXiv 2026" | WebSearch | ChunkFlow 2607.12992; RTC / Legato (already in Theme 2) |
+| C13 | arXiv API batch metadata for 18 candidate IDs (+2509.19301 separately) | curl | All 19 resolved; titles/authors/comments/DOIs recorded |
+| C14 | Crossref bibliographic queries for venues (Johannink, Ankile, Koller, Tagliabue, Chen, Kaufmann, Scheikl, Silver) | curl | DOIs for ICRA 2019, ICRA 2025, ICRA 2026 (ResFiT surfaced here), CDC 2018, T-RO 2024, Neurocomputing 2021, RSS 2020, RA-L 2024; no venue for Silver et al. |
+| C15 | dblp search API for venues | curl | HTTP 429 (rate limited), abandoned |
+| C16 | OpenReview search: RT-Trajectory, Policy Decorator, BEAST, PLD | curl | ICLR 2024 spotlight; ICLR 2025 poster; NeurIPS 2025 poster; ICLR 2026 poster |
+| C17 | "RT-Trajectory ICLR 2024 openreview"; "FAST ... RSS 2025 roboticsproceedings" | WebSearch | RSS XXI p012 page fetched, DOI 10.15607/RSS.2025.XXI.012 |
+| C18 | Crossref `/works/<doi>` for 8 DOIs (pages, volume, author lists) | curl | All resolved; author lists match arXiv |
+| C19 | Full-text reads: arXiv HTML (2605.15480, 2504.12428, 2511.00091, 2412.13630, 2407.16677, 2306.00286, 2501.09747, 2506.06072v3, 2311.01977, 2509.19301); ar5iv (1812.06298, 1812.03201, 2309.15462, 2006.05768, 1803.08287, 2005.05440) | WebFetch | Locators below |
+| C20 | PDF text (pdftotext) for 2309.15462, 2006.05768, 1812.06298 to check rate/staleness statements | curl + pdftotext | DTC deployment and optimizer-rate ablation; DDA async branches; RPL hook results |
+| C21 | ar5iv for MPD 2312.10008; arXiv HTML 2312.10008 | WebFetch | ar5iv conversion failed; arXiv HTML 404 → MPD not read, excluded |
