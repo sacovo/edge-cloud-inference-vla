@@ -13,6 +13,7 @@
 set -euo pipefail
 MANIFEST=$1; OUT_DIR=$2; shift 2
 cd "$SLURM_SUBMIT_DIR"; source scripts/slurm/env.sh
+$ECVLA_RUN python -c "import torch; assert torch.cuda.is_available(), 'CUDA unavailable'"
 while read -r SRC; do
   SUITE=$(basename "$(dirname "$SRC")"); TASK=$(basename "$SRC" .h5)
   $ECVLA_RUN python -m ecvla.vision "$SRC" "$OUT_DIR/$SUITE/$TASK.npz" "$@"

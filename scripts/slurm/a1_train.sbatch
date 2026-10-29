@@ -18,4 +18,4 @@ cd "$SLURM_SUBMIT_DIR"; source scripts/slurm/env.sh
 LINE=$(sed -n "$((SLURM_ARRAY_TASK_ID + 1))p" "$MANIFEST")
 eval "set -- $LINE \"\$@\""
 echo "host=$(hostname) task=$SLURM_ARRAY_TASK_ID args=$*"; nvidia-smi -L
-$ECVLA_RUN python -m ecvla.train "$@"
+$ECVLA_RUN python -m ecvla.train --require-gpu "$@"

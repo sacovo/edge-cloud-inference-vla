@@ -193,6 +193,8 @@ def train(a) -> dict:
     torch.manual_seed(a.seed)
     rng = np.random.default_rng(a.seed)
     device = torch.device(a.device or ("cuda" if torch.cuda.is_available() else "cpu"))
+    if a.require_gpu and device.type != "cuda":
+        raise SystemExit("--require-gpu: CUDA unavailable (driver/torch mismatch?)")
     data = EpisodeData(a.data, a.suites, a.vision_dir if a.vision == "full" else None, a.val_per_task)
     stats = data.norm_stats()
     cfg = config_for_size(
@@ -211,7 +213,7 @@ def train(a) -> dict:
     info = {
         "condition": a.condition, "vision": a.vision, "size_target": a.size, "seed": a.seed, "suites": a.suites,
         "policy": config_dict(cfg), "head_params": model.head_params(), "vision_params": model.vision_params(),
-        "train_episodes": len(train_eps), "val_episodes": len(val_eps), "git_sha": git_sha(), "args": vars(a),
+        "train_episodes": len(train_eps), "val_episodes": len(val_eps), "git_sha": git_sha(), "device": str(device), "args": vars(a),
     }
     print(json.dumps(info))
     log = open(out / "train_log.jsonl", "a")
@@ -263,6 +265,7 @@ def parser() -> argparse.ArgumentParser:
     ap.add_argument("--val-per-task", type=int, default=2)
     ap.add_argument("--log-every", type=int, default=100)
     ap.add_argument("--device")
+    ap.add_argument("--require-gpu", action="store_true", help="fail instead of silently training on CPU")
     return ap
 
 
