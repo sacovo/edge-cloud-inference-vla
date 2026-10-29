@@ -205,7 +205,7 @@ That is 3 seeds per cell, evaluated on the suite's standard initial states.
     - The chosen architecture is then fixed for every cell of the A1 grid and of A2, and logged in the Change log.
   - **Implementation** (`src/ecvla/`: `sensors.py`, `prepare.py`, `vision.py`, `policy.py`, `train.py`, `evaluate.py`):
     - Inputs at observation t: proprio from the state at t; the 3 torque (60 Hz) and 5 wrist F/T (100 Hz) samples of the previous control step, zeroed and flagged invalid at t=0 and after steps flagged unstable by the quality sidecar.
-    - Oracle state = per-object pose + gripper–object contact flag, plus the task token (z also carries the instruction, so the oracle gets it too). Object identity enters through an object-name embedding per slot.
+    - Oracle state = per-object pose + gripper–object contact flag, per articulated fixture joint (cabinet drawers, stove knob) its position + gripper–fixture contact, plus the task token (z also carries the instruction, so the oracle gets it too). Object and joint identity enter through a name embedding per slot.
     - `oracle-delayed` training draws k ∈ {1, 10} per episode, with a delay of k−1..k+1 steps; evaluation uses exactly k.
     - Data: demos that never reach the success predicate are dropped (the 20 wine-bottle demos); 2 demos per task are held out for the validation loss. One model per suite.
     - `full` vision: frozen ImageNet ResNet-18, agent-view + wrist at 224 px (the dataset resolution), 512-d each; only the projection trains.
@@ -274,3 +274,4 @@ _Not started._
   - Clarified the oracle conditions: they include the task token as well as object state, since z carries the instruction too. Without it, `oracle` vs `task-id` would confound state with task identity.
   - Resolved for A1: `full` vision uses 224 px (the Phase A dataset resolution) and a frozen ResNet-18.
   - No hypothesis or criterion changed.
+- 2026-10-29 (before any A1 result; the A1-arch runs were already training): the oracle state now includes articulated fixture joints (drawer slide position, stove-knob angle) with a gripper–fixture contact flag. Reason: on LIBERO-Goal, `open_the_middle_drawer_of_the_cabinet` and `turn_on_the_stove` have no gripper–object contact at all, and their task-relevant state lives only in fixture joints, so the oracle was not an upper bound there. LIBERO-Object scenes have no fixtures. The A1-arch check keeps the earlier oracle (data `a1/prepared`) so its 16 runs stay comparable; the A1 grid uses `a1/prepared_v2`. No hypothesis or criterion changed.

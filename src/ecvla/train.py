@@ -43,7 +43,7 @@ class EpisodeData:
     def __init__(self, data_dir, suites, vision_dir=None, val_per_task=2):
         files = sorted(f for s in suites for f in (Path(data_dir) / s).glob("*.npz"))
         assert files, f"no prepared files for {suites} in {data_dir}"
-        parts, self.tasks, self.objects = [], [], {}
+        parts, self.tasks, self.objects, self.fixtures = [], [], {}, {}
         names = set()
         for f in files:
             arr, meta = load(f)
@@ -53,9 +53,14 @@ class EpisodeData:
             parts.append((arr, meta))
             self.tasks.append(task_key(meta))
             self.objects[task_key(meta)] = meta["objects"]
+            self.fixtures[task_key(meta)] = meta.get("fixtures", [])
+            if "fix_state" not in arr:  # prepared before fixture state existed (A1-arch, v1)
+                arr["fix_state"] = np.zeros((len(arr["actions"]), 0, 2), np.float32)
             names.update(meta["objects"])
+            names.update(self.fixtures[task_key(meta)])
         self.names = sorted(names)
         self.max_obj = max(len(o) for o in self.objects.values())
+        self.max_fix = max(len(o) for o in self.fixtures.values())
         rows = {k: [] for k in parts[0][0] if k not in ("ep_start", "first_success_step")}
         self.episodes = []  # (start_row, length, task_idx, is_val)
         offset = 0
@@ -64,6 +69,7 @@ class EpisodeData:
             pad = self.max_obj - n_obj
             arr["obj_pose"] = np.pad(arr["obj_pose"], ((0, 0), (0, pad), (0, 0)))
             arr["contact"] = np.pad(arr["contact"], ((0, 0), (0, pad)))
+            arr["fix_state"] = np.pad(arr["fix_state"], ((0, 0), (0, self.max_fix - arr["fix_state"].shape[1]), (0, 0)))
             for k in rows:
                 rows[k].append(arr[k])
             starts = arr["ep_start"]
@@ -80,6 +86,12 @@ class EpisodeData:
             objs = self.objects[t]
             self.obj_name[ti, : len(objs)] = [self.names.index(o) for o in objs]
             self.obj_mask[ti, : len(objs)] = True
+        self.fix_name = np.zeros((len(self.tasks), self.max_fix), np.int64)
+        self.fix_mask = np.zeros((len(self.tasks), self.max_fix), bool)
+        for ti, t in enumerate(self.tasks):
+            fx = self.fixtures[t]
+            self.fix_name[ti, : len(fx)] = [self.names.index(o) for o in fx]
+            self.fix_mask[ti, : len(fx)] = True
 
     def split(self, val: bool) -> list:
         return [e for e in self.episodes if e[3] == val]
@@ -122,6 +134,8 @@ class Batcher:
             self.rows[k] = torch.from_numpy(x).to(device)
         self.obj_name = torch.from_numpy(data.obj_name).to(device)
         self.obj_mask = torch.from_numpy(data.obj_mask).to(device)
+        self.fix_name = torch.from_numpy(data.fix_name).to(device)
+        self.fix_mask = torch.from_numpy(data.fix_mask).to(device)
 
     def __call__(self, episodes: list, rng: np.random.Generator) -> tuple[dict, torch.Tensor, torch.Tensor]:
         B, T = len(episodes), max(e[1] for e in episodes)
@@ -150,6 +164,7 @@ class Batcher:
             b["vision"] = g("vision", idx)
         b.update(task=task, obj_name=self.obj_name[task], obj_mask=self.obj_mask[task])
         b.update(obj_pose=g("obj_pose", src_idx), contact=g("contact", src_idx))
+        b.update(fix_state=g("fix_state", src_idx), fix_name=self.fix_name[task], fix_mask=self.fix_mask[task])
         b["state_avail"] = torch.from_numpy(avail).to(dev)
         b["age"] = torch.from_numpy(age).to(dev)
         target = g("actions", tgt_idx)
@@ -200,6 +215,7 @@ def train(a) -> dict:
     cfg = config_for_size(
         a.size, cond=CONDITIONS[a.condition], n_tasks=len(data.tasks), n_names=len(data.names),
         vision_dim=FEATURE_DIM if a.vision == "full" else 0, age_input=a.age_input, core=a.core, head=a.head,
+        fixtures=CONDITIONS[a.condition] == "state" and data.max_fix > 0,
     )
     model = FastPolicy(cfg).to(device)
     batcher = Batcher(data, stats, a.condition, device)
@@ -240,7 +256,8 @@ def train(a) -> dict:
             log.flush()
     info["final"] = rec
     torch.save({"state_dict": model.state_dict(), "info": info, "stats": stats, "tasks": data.tasks,
-                "objects": data.objects, "names": data.names, "max_obj": data.max_obj}, out / "model.pt")
+                "objects": data.objects, "names": data.names, "max_obj": data.max_obj,
+                "fixtures": data.fixtures, "max_fix": data.max_fix}, out / "model.pt")
     (out / "info.json").write_text(json.dumps(info, indent=1))
     return info
 

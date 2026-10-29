@@ -24,7 +24,8 @@ K_EVAL = (1, 10)
 def run(stage, suite, vision, cond, size, core, head, seed):
     name = f"{vision}_{cond}_{size}_{core}-{head}_s{seed}"
     rdir = f"{ROOT}/runs/{stage}/{suite}/{name}"
-    args = [f"--data {ROOT}/prepared", f"--suites {suite}", f"--condition {cond}", f"--size {SIZES[size]}",
+    data = "prepared" if stage == "archcheck" else "prepared_v2"  # v2 adds fixture-joint state to the oracle
+    args = [f"--data {ROOT}/{data}", f"--suites {suite}", f"--condition {cond}", f"--size {SIZES[size]}",
             f"--seed {seed}", f"--core {core}", f"--head {head}", f"--vision {vision}", f"--out {rdir}"]
     if vision == "full":
         args.append(f"--vision-dir {ROOT}/vision")

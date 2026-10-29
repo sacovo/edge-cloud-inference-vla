@@ -41,4 +41,8 @@ def test_online_sensors_match_robot_obs_and_offline_windows():
     np.testing.assert_allclose(np.stack([o["torque"] for o in seen]), torque, atol=1e-6)
     np.testing.assert_allclose(np.stack([o["ft"] for o in seen]), ft, atol=1e-6)
     assert [o["fast_valid"] for o in seen[:2]] == [0, 1]
+    # this Spatial scene has a cabinet (3 drawers) and a stove knob
+    assert sensors.fixtures == ["wooden_cabinet_1_top_level", "wooden_cabinet_1_middle_level",
+                                "wooden_cabinet_1_bottom_level", "flat_stove_1_button"]
+    assert seen[0]["fix_state"].shape == (4, 2)
     env.close()

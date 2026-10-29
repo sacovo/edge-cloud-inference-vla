@@ -1,7 +1,8 @@
 """Compact per-step training arrays for the EXP-0001 fast policy, one .npz per LIBERO task (A1).
 
-Reads the Phase A dataset file (build_dataset.py) and its quality sidecar (quality.py), and adds gripper-object
-contact flags (part of the oracle state; not in the dataset), computed by setting the sim to each recorded state.
+Reads the Phase A dataset file (build_dataset.py) and its quality sidecar (quality.py), and adds the oracle state that
+the dataset lacks: gripper-object contact flags and articulated fixture state (drawer / knob joint position + gripper
+contact), computed by setting the sim to each recorded state.
 Arrays are concatenated over demos; demo d spans rows ep_start[d]:ep_start[d+1]. See sensors.py for the inputs.
 
 Usage: python -m ecvla.prepare <phaseA_task.h5> <quality_task.h5> <out.npz>
@@ -16,10 +17,10 @@ import h5py
 import numpy as np
 
 from ecvla.libero_env import bddl_path, make_env
-from ecvla.sensors import fast_windows, gripper_contacts, proprio_from_state
+from ecvla.sensors import fast_windows, fixture_joints, fixture_state, gripper_contacts, proprio_from_state
 
 
-def demo_arrays(env, g, q, nq: int, objects: list[str]) -> dict:
+def demo_arrays(env, g, q, nq: int, objects: list[str], fixtures: list[str]) -> dict:
     states = g["sim_state"][()]
     T = len(states)
     sub = {k: g[f"substeps/{k}"][()] for k in ("joint_torque", "ee_force", "ee_torque")}
@@ -28,12 +29,14 @@ def demo_arrays(env, g, q, nq: int, objects: list[str]) -> dict:
     fast_valid[0] = 0
     fast_valid[1:] = ~q["unstable"][()]  # unstable[t]: transition t -> t+1, whose substeps feed observation t+1
     contact = np.zeros((T, len(objects)), np.float32)
+    fix = np.zeros((T, len(fixtures), 2), np.float32)
     env.reset()
     for t, s in enumerate(states):
         if t and t % 500 == 0:
             env.reset()  # stay below the env horizon on long demos
         env.regenerate_obs_from_state(s)
         contact[t] = gripper_contacts(env, objects)
+        fix[t] = fixture_state(env, fixtures)
     return {
         "proprio": proprio_from_state(states[:, 1 : 1 + nq], states[:, 1 + nq :]).astype(np.float32),
         "torque": torque,
@@ -41,6 +44,7 @@ def demo_arrays(env, g, q, nq: int, objects: list[str]) -> dict:
         "fast_valid": fast_valid,
         "obj_pose": g["object_pose"][()].reshape(T, len(objects), 7),
         "contact": contact,
+        "fix_state": fix,
         "actions": g["actions"][()],
     }
 
@@ -56,10 +60,11 @@ def prepare(data_path: str, quality_path: str, out_path: str, max_demos: int | N
         nq = env.sim.model.nq
         demos = sorted(f.keys(), key=lambda k: int(k.split("_")[1]))[:max_demos]
         objects = json.loads(f[demos[0]].attrs["objects"])
+        fixtures = fixture_joints(env)
         parts, first_success = [], []
         for name in demos:
             assert json.loads(f[name].attrs["objects"]) == objects, name
-            parts.append(demo_arrays(env, f[name], qf[name], nq, objects))
+            parts.append(demo_arrays(env, f[name], qf[name], nq, objects, fixtures))
             first_success.append(int(qf[name].attrs["first_success_step"]))
         env.close()
         lengths = [len(p["actions"]) for p in parts]
@@ -70,6 +75,7 @@ def prepare(data_path: str, quality_path: str, out_path: str, max_demos: int | N
             "bddl_file_name": str(f.attrs["bddl_file_name"]),
             "language_instruction": str(f.attrs["language_instruction"]),
             "objects": objects,
+            "fixtures": fixtures,
             "demos": demos,
         }
     tmp = out_path.with_name(out_path.stem + ".tmp.npz")
@@ -81,7 +87,8 @@ def prepare(data_path: str, quality_path: str, out_path: str, max_demos: int | N
         meta=np.asarray(json.dumps(meta)),
     )
     os.replace(tmp, out_path)
-    print("done", out_path, f"demos={len(demos)} steps={sum(lengths)} contact_rate={arrays['contact'].mean():.3f}")
+    print("done", out_path, f"demos={len(demos)} steps={sum(lengths)} contact_rate={arrays['contact'].mean():.3f}"
+          f" fixtures={len(fixtures)} fixture_contact_rate={arrays['fix_state'][..., 1].mean() if fixtures else 0:.3f}")
 
 
 def load(path) -> tuple[dict, dict]:

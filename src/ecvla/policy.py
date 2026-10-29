@@ -12,7 +12,8 @@ Swappable parts (fixed for the whole grid after the A1 architecture check; see t
 
 Conditioning tokens: a learned null token (always present), a task token (task index embedding) and, for state
 conditions, one token per object slot built from [pos, quat, gripper contact] (+ latent age) plus an object-name
-embedding. Slots whose latest update has not arrived yet are masked out. The z conditions (A2) will add their
+embedding, and (when the scene has them) one token per articulated fixture joint from [joint position, gripper
+contact with the fixture] plus a joint-name embedding. Slots whose latest update has not arrived yet are masked out. The z conditions (A2) will add their
 latent as further tokens through the same path.
 
 Head size = all trainable parameters except the vision projection, which is reported separately.
@@ -44,6 +45,7 @@ class PolicyConfig:
     n_names: int = 1
     vision_dim: int = 0  # 0 = blind
     age_input: bool = False
+    fixtures: bool = False  # fixture-joint tokens (state conditions in scenes with drawers / knobs)
     core: str = "gru"  # gru | tf
     head: str = "l1"  # l1 | flow
 
@@ -144,6 +146,8 @@ class FastPolicy(nn.Module):
         if cfg.cond == "state":
             self.enc_obj = nn.Linear(OBJ_DIM + int(cfg.age_input), d)
             self.name_emb = nn.Embedding(cfg.n_names, d)
+            if cfg.fixtures:
+                self.enc_fix = nn.Linear(2 + int(cfg.age_input), d)
         if cfg.core == "gru":
             self.core = nn.GRU(d, d, num_layers=cfg.layers, batch_first=True)
         else:
@@ -169,6 +173,12 @@ class FastPolicy(nn.Module):
                 obj = torch.cat([obj, b["age"][:, :, None, None].expand(*obj.shape[:3], 1)], -1)
             toks.append(self.enc_obj(obj) + self.name_emb(b["obj_name"])[:, None])
             mask.append(b["obj_mask"][:, None, :] & b["state_avail"][:, :, None])
+            if self.cfg.fixtures:
+                fix = b["fix_state"]  # (B, T, J, 2)
+                if self.cfg.age_input:
+                    fix = torch.cat([fix, b["age"][:, :, None, None].expand(*fix.shape[:3], 1)], -1)
+                toks.append(self.enc_fix(fix) + self.name_emb(b["fix_name"])[:, None])
+                mask.append(b["fix_mask"][:, None, :] & b["state_avail"][:, :, None])
         return torch.cat(toks, 2), torch.cat(mask, 2)
 
     def features(self, b: dict, state=None) -> tuple[torch.Tensor, object]:

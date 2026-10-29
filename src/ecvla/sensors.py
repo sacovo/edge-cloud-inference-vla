@@ -5,7 +5,8 @@ Observation t is the sim state at the start of control step t (20 Hz). The polic
 - torque window (60 Hz): the 3 joint-torque samples of control step t-1 (substeps TORQUE_SUB of its 25)
 - F/T window (100 Hz): the 5 wrist force/torque samples of control step t-1 (substeps FT_SUB)
 - fast_valid: 0 when there is no previous step (t=0) or that step was physically unstable in replay
-Object state (oracle conditions) is read at t: per object [pos(3), quat(4)] plus a gripper-contact flag.
+Object state (oracle conditions) is read at t: per object [pos(3), quat(4)] plus a gripper-contact flag, and per
+articulated fixture joint (cabinet drawers, stove knob, ...) [joint position, gripper contact with that fixture].
 """
 
 import numpy as np
@@ -46,6 +47,25 @@ def gripper_contacts(env, objects: list[str]) -> np.ndarray:
     return np.array([inner.check_contact(gripper, inner.get_object(o)) for o in objects], dtype=np.float32)
 
 
+def fixture_joints(env) -> list[str]:
+    """Articulated scene joints (slide/hinge, not robot or gripper), e.g. `wooden_cabinet_1_top_level`."""
+    m = env.sim.model
+    names = [m.joint_id2name(j) for j in range(m.njnt) if m.jnt_type[j] != 0]  # 0 = free joint (movable objects)
+    return [n for n in names if not n.startswith(("robot0", "gripper0"))]
+
+
+def fixture_state(env, joints: list[str]) -> np.ndarray:
+    """(J, 2): joint position and gripper contact with the fixture that owns the joint."""
+    inner = env.env
+    out = np.zeros((len(joints), 2), np.float32)
+    for i, j in enumerate(joints):
+        owner = [f for f in inner.fixtures_dict if j.startswith(f + "_")]
+        assert len(owner) == 1, (j, list(inner.fixtures_dict))
+        out[i, 0] = env.sim.data.qpos[env.sim.model.get_joint_qpos_addr(j)]
+        out[i, 1] = inner.check_contact(inner.robots[0].gripper, inner.get_object(owner[0]))
+    return out
+
+
 def object_pose(obs: dict, objects: list[str]) -> np.ndarray:
     return np.stack([np.r_[obs[f"{o}_pos"], obs[f"{o}_quat"]] for o in objects]).astype(np.float32)
 
@@ -58,6 +78,7 @@ class OnlineSensors:
 
     def __init__(self, env, logger, objects: list[str]):
         self.env, self.logger, self.objects = env, logger, objects
+        self.fixtures = fixture_joints(env)
         self.first = True
 
     def observe(self, obs: dict) -> dict:
@@ -77,6 +98,7 @@ class OnlineSensors:
             "fast_valid": np.float32(not self.first),
             "obj_pose": object_pose(obs, self.objects),
             "contact": gripper_contacts(self.env, self.objects),
+            "fix_state": fixture_state(self.env, self.fixtures),
         }
         self.first = False
         return out

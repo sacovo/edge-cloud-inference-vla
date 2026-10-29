@@ -24,7 +24,15 @@ Newest entries first. Each entry covers what was tried, the result, and what fai
   - `env.reset()` (hard reset) rebuilds the sim, so the substep logger must be re-attached every episode, or the F/T windows are empty
   - robosuite's `robot0_joint_pos` observable lags the sim state by ~2e-4 after a step; we read the sim state in both training and eval
 - Local smoke on 3 Spatial demos: prepare → vision → train (blind `oracle-delayed`; `full` `task-id` with transformer + flow) → closed-loop eval all run. Success 0, as expected. Blind eval ≈ 5 s per 220-step episode; vision ≈ 12 s locally (slower on CPU nodes with llvmpipe).
-- Not run on the cluster yet: `calculon` did not resolve from this machine (VPN?).
+- Cluster access via an SSH tunnel (`ssh -p 2222 -o HostKeyAlias=calculon.informatik.fhnw.ch sandro.covo@localhost`) while the VPN on this machine is down.
+- **torch/CUDA mismatch:** PyPI's torch 2.15 wheel is cu132, but the GPU nodes' driver supports CUDA 12.9, so the first GPU debug job silently ran on CPU. Pinned torch 2.14.1+cu126 (uv index, Linux only). Training now fails with `--require-gpu` and logs its device; the vision job asserts CUDA.
+- Debug runs on the cluster all passed:
+  - prepare (Object, 2 demos): 17 s
+  - vision: 63 s
+  - training (10M transformer + flow, 200 steps, RTX 3080): ~15 s, loss 0.99 → 0.55
+  - closed-loop eval: ~10 s per 280-step episode on CPU, so ~8 min per task at 50 episodes
+- GPU scheduling: the GPUs are almost fully booked, and `debug` allows 1 GPU per user. Jobs that ask for fewer CPUs/memory start sooner; training is submitted to `performance,h200`.
+- Full prepare (30 tasks): done, ≤6 min and ≤4.6 GB per task. Gripper-contact rate is 7–16% per task, except `open_the_middle_drawer_of_the_cabinet` and `turn_on_the_stove` (Goal) at 0. Those tasks only touch fixtures, and the oracle has **no articulated fixture state** (drawer opening, knob angle). This affects only the Goal oracle, not A-test (Spatial + Object). The author decided to add them: the oracle now has one token per fixture joint (position + gripper–fixture contact). Re-prepared into `a1/prepared_v2`; the A1-arch check keeps v1 so its runs stay comparable (logged in the EXP-0001 change log).
 - Next:
   - debug-partition tests of `a1_prepare` / `a1_vision` / `a1_train` / `a1_eval`
   - full prepare (30 tasks) and vision features

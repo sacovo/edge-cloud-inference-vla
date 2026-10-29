@@ -45,9 +45,16 @@ class Runner:
         name[: len(objs)] = [ckpt["names"].index(o) for o in objs]
         mask = np.zeros(S, bool)
         mask[: len(objs)] = True
+        fx = ckpt.get("fixtures", {}).get(task, [])
+        J = ckpt.get("max_fix", 0)
+        fname = np.zeros(J, np.int64)
+        fname[: len(fx)] = [ckpt["names"].index(o) for o in fx]
+        fmask = np.zeros(J, bool)
+        fmask[: len(fx)] = True
         t = lambda x: torch.as_tensor(x, device=device)[None]  # noqa: E731
-        self.episode_inputs = {"task": t(ti), "obj_name": t(name), "obj_mask": t(mask)}
-        self.n_obj, self.S = len(objs), S
+        self.episode_inputs = {"task": t(ti), "obj_name": t(name), "obj_mask": t(mask), "fix_name": t(fname),
+                               "fix_mask": t(fmask)}
+        self.n_obj, self.S, self.n_fix, self.J = len(objs), S, len(fx), J
 
     def norm(self, k, x):
         m, s = self.stats[k]
@@ -69,14 +76,17 @@ class Runner:
             b["vision"] = step(self.norm("vision", vision))
         pose = np.zeros((self.S, 7), np.float32)
         contact = np.zeros(self.S, np.float32)
-        self.history.append((obs["obj_pose"], obs["contact"]))
+        fix = np.zeros((self.J, 2), np.float32)
+        self.history.append((obs["obj_pose"], obs["contact"], obs.get("fix_state")))
         avail, age = False, 0.0
         if self.condition.startswith("oracle") and self.src[self.t] >= 0:
-            p, c = self.history[self.src[self.t]]
+            p, c, f = self.history[self.src[self.t]]
             pose[: self.n_obj], contact[: self.n_obj] = p, c
+            if self.n_fix:
+                fix[: self.n_fix] = f
             avail, age = True, self.age[self.t]
         b.update(obj_pose=step(self.norm("obj_pose", pose)), contact=step(contact),
-                 state_avail=torch.tensor([[avail]], device=self.device), age=step(age))
+                 fix_state=step(fix), state_avail=torch.tensor([[avail]], device=self.device), age=step(age))
         f, self.state = self.model.features(b, self.state)
         chunk = self.model.act(f, self.gen)[0, 0].cpu().numpy()
         self.t += 1
@@ -120,6 +130,8 @@ def evaluate(run_dir: str, suite: str, task_id: int, out: str, k: int | None = N
         objs = object_names(obs)
         assert objs == ckpt["objects"][key], (objs, ckpt["objects"][key])
         sensors = OnlineSensors(env, logger, objs)
+        if ckpt.get("fixtures"):
+            assert sensors.fixtures == ckpt["fixtures"][key], (sensors.fixtures, ckpt["fixtures"][key])
         logger.take()
         runner.reset(horizon, rng, k)
         success, steps = False, 0
