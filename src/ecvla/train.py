@@ -27,10 +27,11 @@ from ecvla.policy import ACT_DIM, CHUNK, FastPolicy, config_dict, config_for_siz
 from ecvla.prepare import load
 from ecvla.vision import FEATURE_DIM
 
-CONDITIONS = {"none": "none", "task-id": "task", "oracle-delayed": "state", "oracle-fresh": "state"}
-K_TRAIN = (1, 10)  # Phase A axis D
+CONDITIONS = {"none": "none", "task-id": "task", "oracle-delayed": "state", "oracle-fresh": "state",
+              "z-teacher": "latent"}
+K_TRAIN = {"oracle-delayed": (1, 10), "z-teacher": (1, 4, 10, 20)}  # Phase A axis D; A1-teacher (H4)
 CONTROL_HZ = 20.0
-NORMALIZED = ("proprio", "torque", "ft", "obj_pose", "vision", "actions")
+NORMALIZED = ("proprio", "torque", "ft", "obj_pose", "vision", "latent", "actions")
 
 
 def task_key(meta: dict) -> str:
@@ -40,7 +41,7 @@ def task_key(meta: dict) -> str:
 class EpisodeData:
     """All demos of the selected suites as flat per-step arrays (rows), with per-episode index ranges."""
 
-    def __init__(self, data_dir, suites, vision_dir=None, val_per_task=2):
+    def __init__(self, data_dir, suites, vision_dir=None, val_per_task=2, latent_dir=None, latent_kind="chunk"):
         files = sorted(f for s in suites for f in (Path(data_dir) / s).glob("*.npz"))
         assert files, f"no prepared files for {suites} in {data_dir}"
         parts, self.tasks, self.objects, self.fixtures = [], [], {}, {}
@@ -50,6 +51,9 @@ class EpisodeData:
             if vision_dir is not None:
                 arr["vision"] = np.load(Path(vision_dir) / meta["suite"] / f.name)["vision"].astype(np.float32)
                 assert len(arr["vision"]) == len(arr["actions"]), f
+            if latent_dir is not None:
+                arr["latent"] = np.load(Path(latent_dir) / meta["suite"] / f.name)[f"z_{latent_kind}"].astype(np.float32)
+                assert len(arr["latent"]) == len(arr["actions"]), f
             parts.append((arr, meta))
             self.tasks.append(task_key(meta))
             self.objects[task_key(meta)] = meta["objects"]
@@ -111,12 +115,12 @@ class EpisodeData:
 
 
 def state_source(T: int, condition: str, rng: np.random.Generator, k: int | None = None, train: bool = True):
-    """(src, age_seconds) per step for the oracle conditions; src = -1 before the first update arrives."""
+    """(src, age_seconds) per step for the delayed conditions; src = -1 before the first update arrives."""
     if condition == "oracle-fresh":
         src = np.arange(T)
     else:
         if k is None:
-            k = int(rng.choice(K_TRAIN))
+            k = int(rng.choice(K_TRAIN[condition]))
         delay = DelayModel(base=k - 1, jitter=2) if train else DelayModel(base=k)
         src = schedule(T, period=k, delay=delay, rng=rng).src
     age = np.where(src >= 0, np.arange(T) - src, 0) / CONTROL_HZ
@@ -153,7 +157,7 @@ class Batcher:
             j = t[:, None] + np.arange(CHUNK)[None]
             tgt_idx[i] = start + np.minimum(j, n - 1)
             tgt_mask[i] = (j < n) & step_mask[i, :, None]
-            if self.condition.startswith("oracle"):
+            if self.condition != "none" and self.condition != "task-id":
                 src, a = state_source(n, self.condition, rng)
                 src_idx[i, :n], avail[i, :n], age[i, :n] = start + np.maximum(src, 0), src >= 0, a
         dev = self.device
@@ -165,6 +169,8 @@ class Batcher:
         b.update(task=task, obj_name=self.obj_name[task], obj_mask=self.obj_mask[task])
         b.update(obj_pose=g("obj_pose", src_idx), contact=g("contact", src_idx))
         b.update(fix_state=g("fix_state", src_idx), fix_name=self.fix_name[task], fix_mask=self.fix_mask[task])
+        if "latent" in self.rows:
+            b["latent"] = g("latent", src_idx)
         b["state_avail"] = torch.from_numpy(avail).to(dev)
         b["age"] = torch.from_numpy(age).to(dev)
         target = g("actions", tgt_idx)
@@ -210,12 +216,16 @@ def train(a) -> dict:
     device = torch.device(a.device or ("cuda" if torch.cuda.is_available() else "cpu"))
     if a.require_gpu and device.type != "cuda":
         raise SystemExit("--require-gpu: CUDA unavailable (driver/torch mismatch?)")
-    data = EpisodeData(a.data, a.suites, a.vision_dir if a.vision == "full" else None, a.val_per_task)
+    latent = a.condition == "z-teacher"
+    assert not latent or a.latent_dir, "z-teacher needs --latent-dir (teacher.py output)"
+    data = EpisodeData(a.data, a.suites, a.vision_dir if a.vision == "full" else None, a.val_per_task,
+                       a.latent_dir if latent else None, a.latent_kind)
     stats = data.norm_stats()
     cfg = config_for_size(
         a.size, cond=CONDITIONS[a.condition], n_tasks=len(data.tasks), n_names=len(data.names),
         vision_dim=FEATURE_DIM if a.vision == "full" else 0, age_input=a.age_input, core=a.core, head=a.head,
         fixtures=CONDITIONS[a.condition] == "state" and data.max_fix > 0,
+        latent_dim=data.rows["latent"].shape[-1] if latent else 0,
     )
     model = FastPolicy(cfg).to(device)
     batcher = Batcher(data, stats, a.condition, device)
@@ -275,6 +285,9 @@ def parser() -> argparse.ArgumentParser:
     ap.add_argument("--core", choices=["gru", "tf"], default="gru")
     ap.add_argument("--head", choices=["l1", "flow"], default="l1")
     ap.add_argument("--age-input", action="store_true")
+    ap.add_argument("--latent-dir", help="z-teacher: teacher.py output root (<dir>/<suite>/<task>.npz)")
+    ap.add_argument("--latent-kind", choices=["chunk", "hidden"], default="chunk")
+    ap.add_argument("--teacher", help="z-teacher: teacher run dir (recorded for closed-loop eval)")
     ap.add_argument("--steps", type=int, default=20000)
     ap.add_argument("--batch", type=int, default=32, help="episodes per batch")
     ap.add_argument("--lr", type=float, default=3e-4)

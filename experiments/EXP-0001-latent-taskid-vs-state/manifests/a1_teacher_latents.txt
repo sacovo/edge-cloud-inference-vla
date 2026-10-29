@@ -1,0 +1,9 @@
+$ECVLA_SCRATCH/a1/runs/grid/libero_spatial/none_task-id_10M_gru-l1_s0 $ECVLA_SCRATCH/a1/prepared_v2/libero_spatial $ECVLA_SCRATCH/a1/teacher_z/s0/libero_spatial
+$ECVLA_SCRATCH/a1/runs/grid/libero_spatial/none_task-id_10M_gru-l1_s1 $ECVLA_SCRATCH/a1/prepared_v2/libero_spatial $ECVLA_SCRATCH/a1/teacher_z/s1/libero_spatial
+$ECVLA_SCRATCH/a1/runs/grid/libero_spatial/none_task-id_10M_gru-l1_s2 $ECVLA_SCRATCH/a1/prepared_v2/libero_spatial $ECVLA_SCRATCH/a1/teacher_z/s2/libero_spatial
+$ECVLA_SCRATCH/a1/runs/grid/libero_object/none_task-id_10M_gru-l1_s0 $ECVLA_SCRATCH/a1/prepared_v2/libero_object $ECVLA_SCRATCH/a1/teacher_z/s0/libero_object
+$ECVLA_SCRATCH/a1/runs/grid/libero_object/none_task-id_10M_gru-l1_s1 $ECVLA_SCRATCH/a1/prepared_v2/libero_object $ECVLA_SCRATCH/a1/teacher_z/s1/libero_object
+$ECVLA_SCRATCH/a1/runs/grid/libero_object/none_task-id_10M_gru-l1_s2 $ECVLA_SCRATCH/a1/prepared_v2/libero_object $ECVLA_SCRATCH/a1/teacher_z/s2/libero_object
+$ECVLA_SCRATCH/a1/runs/grid/libero_goal/none_task-id_10M_gru-l1_s0 $ECVLA_SCRATCH/a1/prepared_v2/libero_goal $ECVLA_SCRATCH/a1/teacher_z/s0/libero_goal
+$ECVLA_SCRATCH/a1/runs/grid/libero_goal/none_task-id_10M_gru-l1_s1 $ECVLA_SCRATCH/a1/prepared_v2/libero_goal $ECVLA_SCRATCH/a1/teacher_z/s1/libero_goal
+$ECVLA_SCRATCH/a1/runs/grid/libero_goal/none_task-id_10M_gru-l1_s2 $ECVLA_SCRATCH/a1/prepared_v2/libero_goal $ECVLA_SCRATCH/a1/teacher_z/s2/libero_goal

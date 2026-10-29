@@ -13,7 +13,8 @@ Swappable parts (fixed for the whole grid after the A1 architecture check; see t
 Conditioning tokens: a learned null token (always present), a task token (task index embedding) and, for state
 conditions, one token per object slot built from [pos, quat, gripper contact] (+ latent age) plus an object-name
 embedding, and (when the scene has them) one token per articulated fixture joint from [joint position, gripper
-contact with the fixture] plus a joint-name embedding. Slots whose latest update has not arrived yet are masked out. The z conditions (A2) will add their
+contact with the fixture] plus a joint-name embedding. Latent conditions (z from a slow model, e.g. `z-teacher`)
+add one token from [z, z's age in seconds] next to the task token. Slots whose latest update has not arrived yet are masked out. The z conditions (A2) will add their
 latent as further tokens through the same path.
 
 Head size = all trainable parameters except the vision projection, which is reported separately.
@@ -33,19 +34,20 @@ ACT_DIM = 7
 OBJ_DIM = 8  # pos(3) + quat(4) + gripper contact(1)
 WINDOW = 16  # transformer context, control steps (0.8 s)
 FLOW_STEPS = 10
-COND_KINDS = ("none", "task", "state")
+COND_KINDS = ("none", "task", "state", "latent")
 
 
 @dataclass
 class PolicyConfig:
     d: int
     layers: int = 1
-    cond: str = "none"  # none | task | state (state includes the task token)
+    cond: str = "none"  # none | task | state | latent (state and latent include the task token)
     n_tasks: int = 1
     n_names: int = 1
     vision_dim: int = 0  # 0 = blind
     age_input: bool = False
     fixtures: bool = False  # fixture-joint tokens (state conditions in scenes with drawers / knobs)
+    latent_dim: int = 0  # z size for latent conditions (its age is always appended)
     core: str = "gru"  # gru | tf
     head: str = "l1"  # l1 | flow
 
@@ -148,6 +150,9 @@ class FastPolicy(nn.Module):
             self.name_emb = nn.Embedding(cfg.n_names, d)
             if cfg.fixtures:
                 self.enc_fix = nn.Linear(2 + int(cfg.age_input), d)
+        if cfg.cond == "latent":
+            assert cfg.latent_dim > 0
+            self.enc_lat = nn.Linear(cfg.latent_dim + 1, d)
         if cfg.core == "gru":
             self.core = nn.GRU(d, d, num_layers=cfg.layers, batch_first=True)
         else:
@@ -179,6 +184,10 @@ class FastPolicy(nn.Module):
                     fix = torch.cat([fix, b["age"][:, :, None, None].expand(*fix.shape[:3], 1)], -1)
                 toks.append(self.enc_fix(fix) + self.name_emb(b["fix_name"])[:, None])
                 mask.append(b["fix_mask"][:, None, :] & b["state_avail"][:, :, None])
+        if self.cfg.cond == "latent":
+            z = torch.cat([b["latent"], b["age"][..., None]], -1)  # (B, T, latent_dim + 1)
+            toks.append(self.enc_lat(z)[:, :, None])
+            mask.append(b["state_avail"][:, :, None])
         return torch.cat(toks, 2), torch.cat(mask, 2)
 
     def features(self, b: dict, state=None) -> tuple[torch.Tensor, object]:

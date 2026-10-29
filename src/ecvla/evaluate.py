@@ -4,6 +4,8 @@ Protocol: LIBERO's fixed initial states for the task (50, never edited), 10 no-o
 the policy acts at 20 Hz until success or MAX_STEPS (the common OpenVLA/openpi limits per suite). Only the first
 action of each predicted chunk is executed. Inputs come from sensors.OnlineSensors, which builds them the same way
 as prepare.py. For `oracle-delayed`, object state is refreshed every k steps and arrives exactly k steps late.
+For `z-teacher`, the teacher policy (teacher.py) sees every observation; its output z is read every k steps and
+arrives exactly k steps late.
 
 Usage: python -m ecvla.evaluate <run_dir> --suite libero_spatial --task 0 --out <result.json> [--k 1]
        python -m ecvla.evaluate <run_dir> --suite libero_spatial --task 0 1 ... 9 --k 1 10 --out-dir <dir>
@@ -34,10 +36,12 @@ class Runner:
 
     def __init__(self, ckpt: dict, task: str, device="cpu"):
         info = ckpt["info"]
+        self.task = task
         self.cfg = PolicyConfig(**info["policy"])
         self.model = FastPolicy(self.cfg).to(device).eval()
         self.model.load_state_dict(ckpt["state_dict"])
         self.condition = info["condition"]
+        self.latent_kind = info["args"].get("latent_kind", "chunk")
         self.stats = {k: (np.asarray(m, np.float32), np.asarray(s, np.float32)) for k, (m, s) in ckpt["stats"].items()}
         self.device = device
         ti = ckpt["tasks"].index(task)
@@ -62,9 +66,14 @@ class Runner:
         m, s = self.stats[k]
         return (x - m) / s
 
-    def reset(self, horizon: int, rng: np.random.Generator, k: int | None):
+    def reset(self, horizon: int, rng: np.random.Generator, k: int | None, teacher=None):
         self.state, self.history, self.t = None, [], 0
-        if self.condition.startswith("oracle"):
+        self.online_teacher = None
+        if self.condition == "z-teacher":
+            from ecvla.teacher import OnlineTeacher
+
+            self.online_teacher = OnlineTeacher(teacher, self.task, self.latent_kind)
+        if self.condition not in ("none", "task-id"):
             self.src, self.age = state_source(horizon, self.condition, rng, k=k, train=False)
         self.gen = torch.Generator(device=self.device).manual_seed(int(rng.integers(2**31)))
 
@@ -87,6 +96,13 @@ class Runner:
             if self.n_fix:
                 fix[: self.n_fix] = f
             avail, age = True, self.age[self.t]
+        if self.online_teacher is not None:
+            self.online_teacher.observe(obs)
+            z = np.zeros(self.cfg.latent_dim, np.float32)
+            if self.src[self.t] >= 0:
+                z = self.norm("latent", self.online_teacher.history[self.src[self.t]])
+                avail, age = True, self.age[self.t]
+            b["latent"] = step(z)
         b.update(obj_pose=step(self.norm("obj_pose", pose)), contact=step(contact),
                  fix_state=step(fix), state_avail=torch.tensor([[avail]], device=self.device), age=step(age))
         f, self.state = self.model.features(b, self.state)
@@ -110,8 +126,13 @@ def evaluate(run_dir: str, suite: str, task_id: int, out: str, k: int | None = N
     bddl = os.path.join(get_libero_path("bddl_files"), task.problem_folder, task.bddl_file)
     key = Path(bddl).stem
     runner = Runner(ckpt, key)
-    if runner.condition == "oracle-delayed":
-        assert k is not None, "oracle-delayed needs --k"
+    if runner.condition in ("oracle-delayed", "z-teacher"):
+        assert k is not None, f"{runner.condition} needs --k"
+    teacher = None
+    if runner.condition == "z-teacher":
+        from ecvla.teacher import Teacher
+
+        teacher = Teacher(ckpt["info"]["args"]["teacher"])
     vision = ckpt["info"]["vision"] == "full"
     encoder = None
     if vision:
@@ -135,7 +156,7 @@ def evaluate(run_dir: str, suite: str, task_id: int, out: str, k: int | None = N
         if runner.cfg.fixtures:  # models without fixture tokens (no fixture data) ignore the scene's fixtures
             assert sensors.fixtures == ckpt["fixtures"][key], (sensors.fixtures, ckpt["fixtures"][key])
         logger.take()
-        runner.reset(horizon, rng, k)
+        runner.reset(horizon, rng, k, teacher)
         success, steps = False, 0
         for steps in range(1, horizon + 1):
             o = sensors.observe(obs)

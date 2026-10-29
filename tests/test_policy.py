@@ -18,7 +18,7 @@ def batch(B=2, T=40, S=5, vision=0, seed=0):
          "fast_valid": torch.ones(B, T), "task": torch.arange(B) % 3, "obj_name": torch.arange(S).repeat(B, 1),
          "obj_mask": torch.ones(B, S, dtype=torch.bool), "obj_pose": r(B, T, S, 7), "contact": torch.zeros(B, T, S),
          "state_avail": torch.ones(B, T, dtype=torch.bool), "age": torch.zeros(B, T),
-         "fix_state": r(B, T, 2, 2), "fix_name": torch.tensor([[5, 6]]).repeat(B, 1), "fix_mask": torch.ones(B, 2, dtype=torch.bool)}
+         "latent": r(B, T, 56), "fix_state": r(B, T, 2, 2), "fix_name": torch.tensor([[5, 6]]).repeat(B, 1), "fix_mask": torch.ones(B, 2, dtype=torch.bool)}
     if vision:
         b["vision"] = r(B, T, vision)
     return b
@@ -26,15 +26,17 @@ def batch(B=2, T=40, S=5, vision=0, seed=0):
 
 def model(core, head, cond="state", d=32, layers=2):
     torch.manual_seed(0)
-    cfg = PolicyConfig(d=d, layers=layers, cond=cond, n_tasks=3, n_names=7, core=core, head=head, fixtures=cond == "state")
+    cfg = PolicyConfig(d=d, layers=layers, cond=cond, n_tasks=3, n_names=7, core=core, head=head, fixtures=cond == "state",
+                       latent_dim=56 if cond == "latent" else 0)
     return FastPolicy(cfg).eval()
 
 
 @pytest.mark.parametrize("core,head", ARCHS)
-@pytest.mark.parametrize("cond", ["none", "task", "state"])
+@pytest.mark.parametrize("cond", ["none", "task", "state", "latent"])
 def test_head_size_hits_target(core, head, cond):
     for target in (10_000, 100_000, 1_000_000, 10_000_000):
-        n = count_head_params(config_for_size(target, cond=cond, n_tasks=10, n_names=40, core=core, head=head))
+        kw = {"latent_dim": 56} if cond == "latent" else {}
+        n = count_head_params(config_for_size(target, cond=cond, n_tasks=10, n_names=40, core=core, head=head, **kw))
         assert 0.7 < n / target < 1.4, (target, n)
 
 
@@ -50,10 +52,11 @@ def test_future_inputs_do_not_change_past_features(core, head):
     assert not torch.allclose(f1[:, 25:], f2[:, 25:])
 
 
+@pytest.mark.parametrize("cond", ["state", "latent"])
 @pytest.mark.parametrize("core,head", ARCHS)
-def test_stepwise_matches_sequence(core, head):
+def test_stepwise_matches_sequence(core, head, cond):
     """Closed loop feeds one step at a time; it must give what training computed on the whole episode."""
-    m, b = model(core, head), batch(T=WINDOW * 2 + 3)
+    m, b = model(core, head, cond), batch(T=WINDOW * 2 + 3)
     per_ep = ("task", "obj_name", "obj_mask", "fix_name", "fix_mask")
     with torch.no_grad():
         full = m.features(b)[0]
@@ -65,12 +68,14 @@ def test_stepwise_matches_sequence(core, head):
     torch.testing.assert_close(torch.cat(steps, 1), full, atol=1e-5, rtol=1e-4)
 
 
-def test_unavailable_state_is_ignored():
-    m, b = model("gru", "l1"), batch()
+@pytest.mark.parametrize("cond", ["state", "latent"])
+def test_unavailable_state_is_ignored(cond):
+    m, b = model("gru", "l1", cond), batch()
     b["state_avail"][:, :10] = False
     b2 = {k: v.clone() for k, v in b.items()}
     b2["obj_pose"][:, :10] += 3.0
     b2["fix_state"][:, :10] += 3.0
+    b2["latent"][:, :10] += 3.0
     with torch.no_grad():
         torch.testing.assert_close(m.features(b)[0][:, :10], m.features(b2)[0][:, :10])
 

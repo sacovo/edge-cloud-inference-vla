@@ -77,3 +77,34 @@ def test_train_learns_and_runner_matches(data_dir, tmp_path, condition, core, he
            "obj_pose": np.zeros((3, 7)), "contact": np.zeros(3), "fix_state": np.zeros((2, 2))}
     a = r.act(obs)
     assert a.shape == (7,) and np.isfinite(a).all()
+
+
+def test_teacher_latents_train_a_student_and_drive_the_runner(data_dir, tmp_path):
+    """A1-teacher (H4): teacher z on demo frames aligns with the rows; the student trains on it; in closed loop the
+    student reads the teacher's z through the delay schedule."""
+    from ecvla.evaluate import Runner
+    from ecvla.teacher import Teacher, precompute
+
+    common = ["--data", str(data_dir), "--suites", "libero_fake", "--steps", "60", "--batch", "4", "--log-every", "30",
+              "--val-per-task", "1", "--device", "cpu"]
+    teacher_dir = tmp_path / "teacher"
+    train(parser().parse_args(common + ["--condition", "task-id", "--size", "20000", "--out", str(teacher_dir)]))
+    precompute(str(teacher_dir), str(data_dir / "libero_fake"), str(tmp_path / "z/libero_fake"))
+    z = np.load(tmp_path / "z/libero_fake/b_demo.npz")
+    rows = np.load(data_dir / "libero_fake/b_demo.npz")["ep_start"][-1]
+    assert z["z_chunk"].shape == (rows, 56) and z["z_hidden"].shape[0] == rows
+
+    student = tmp_path / "student"
+    train(parser().parse_args(common + ["--condition", "z-teacher", "--size", "10000", "--out", str(student),
+                                        "--latent-dir", str(tmp_path / "z"), "--teacher", str(teacher_dir)]))
+    ckpt = torch.load(student / "model.pt", weights_only=False)
+    assert ckpt["info"]["policy"]["cond"] == "latent" and ckpt["info"]["policy"]["latent_dim"] == 56
+
+    r = Runner(ckpt, "b")
+    r.reset(20, np.random.default_rng(0), k=4, teacher=Teacher(teacher_dir))
+    obs = {"proprio": np.zeros(PROPRIO_DIM), "torque": np.zeros(TORQUE_DIM), "ft": np.zeros(FT_DIM), "fast_valid": 0.0,
+           "obj_pose": np.zeros((3, 7)), "contact": np.zeros(3), "fix_state": np.zeros((2, 2))}
+    for _ in range(6):
+        a = r.act(obs)
+    assert np.isfinite(a).all() and len(r.online_teacher.history) == 6
+    np.testing.assert_array_equal(r.src[:6], [-1, -1, -1, -1, 0, 0])  # exactly k = 4 steps late
