@@ -29,8 +29,8 @@ def run(stage, suite, vision, cond, size, core, head, seed):
             f"--seed {seed}", f"--core {core}", f"--head {head}", f"--vision {vision}", f"--out {rdir}"]
     if vision == "full":
         args.append(f"--vision-dir {ROOT}/vision")
-    evals = [f"{rdir} {suite} {t} {k}" for t in range(10) for k in (K_EVAL if cond == "oracle-delayed" else ["-"])]
-    return " ".join(args), evals
+    ks = ",".join(map(str, K_EVAL)) if cond == "oracle-delayed" else "-"
+    return " ".join(args), [f"{rdir} {suite} {ks}"]  # one eval job per run: all 10 tasks (x k) in one process
 
 
 def main():
@@ -54,7 +54,7 @@ def main():
     OUT.mkdir(exist_ok=True)
     (OUT / f"a1_{a.stage}_train.txt").write_text("\n".join(train) + "\n")
     (OUT / f"a1_{a.stage}_eval.txt").write_text("\n".join(evals) + "\n")
-    print(f"{a.stage}: {len(train)} train runs, {len(evals)} eval jobs -> {OUT}")
+    print(f"{a.stage}: {len(train)} train runs, {len(evals)} eval jobs (one per run) -> {OUT}")
 
 
 if __name__ == "__main__":

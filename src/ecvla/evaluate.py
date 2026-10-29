@@ -6,6 +6,8 @@ action of each predicted chunk is executed. Inputs come from sensors.OnlineSenso
 as prepare.py. For `oracle-delayed`, object state is refreshed every k steps and arrives exactly k steps late.
 
 Usage: python -m ecvla.evaluate <run_dir> --suite libero_spatial --task 0 --out <result.json> [--k 1]
+       python -m ecvla.evaluate <run_dir> --suite libero_spatial --task 0 1 ... 9 --k 1 10 --out-dir <dir>
+         (all tasks x k in one process; writes <dir>/<suite>_t<task>_k<k|->.json, skipping finished ones)
 """
 
 import argparse
@@ -161,13 +163,22 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("run_dir")
     ap.add_argument("--suite", required=True)
-    ap.add_argument("--task", type=int, required=True)
-    ap.add_argument("--out", required=True)
-    ap.add_argument("--k", type=int)
+    ap.add_argument("--task", type=int, nargs="+", required=True)
+    ap.add_argument("--k", type=int, nargs="*", help="update periods for oracle-delayed")
+    ap.add_argument("--out", help="result file (one task and at most one k)")
+    ap.add_argument("--out-dir", help="result directory (any number of tasks and k)")
     ap.add_argument("--episodes", type=int, default=50)
     ap.add_argument("--seed", type=int, default=0)
     a = ap.parse_args()
-    evaluate(a.run_dir, a.suite, a.task, a.out, a.k, a.episodes, a.seed)
+    ks = a.k or [None]
+    if a.out:
+        assert len(a.task) == 1 and len(ks) == 1, "--out takes one task and one k; use --out-dir"
+        evaluate(a.run_dir, a.suite, a.task[0], a.out, ks[0], a.episodes, a.seed)
+        return
+    for task in a.task:
+        for k in ks:
+            out = Path(a.out_dir) / f"{a.suite}_t{task}_k{k if k is not None else '-'}.json"
+            evaluate(a.run_dir, a.suite, task, str(out), k, a.episodes, a.seed)
 
 
 if __name__ == "__main__":
