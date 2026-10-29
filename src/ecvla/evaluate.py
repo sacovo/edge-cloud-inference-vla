@@ -130,7 +130,7 @@ def evaluate(run_dir: str, suite: str, task_id: int, out: str, k: int | None = N
         objs = object_names(obs)
         assert objs == ckpt["objects"][key], (objs, ckpt["objects"][key])
         sensors = OnlineSensors(env, logger, objs)
-        if ckpt.get("fixtures"):
+        if runner.cfg.fixtures:  # models without fixture tokens (no fixture data) ignore the scene's fixtures
             assert sensors.fixtures == ckpt["fixtures"][key], (sensors.fixtures, ckpt["fixtures"][key])
         logger.take()
         runner.reset(horizon, rng, k)

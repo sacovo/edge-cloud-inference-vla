@@ -222,7 +222,7 @@ def train(a) -> dict:
     train_eps, val_eps = data.split(False), data.split(True)
     act_std = torch.tensor(stats["actions"][1], device=device)
     opt = torch.optim.AdamW(model.parameters(), lr=a.lr, weight_decay=a.weight_decay)
-    warmup = min(500, a.steps // 10)
+    warmup = max(1, min(500, a.steps // 10))
     sched = torch.optim.lr_scheduler.LambdaLR(
         opt, lambda s: min(1, (s + 1) / warmup) * 0.5 * (1 + math.cos(math.pi * min(1, s / a.steps)))
     )
