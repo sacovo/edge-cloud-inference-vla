@@ -200,6 +200,16 @@ That is 3 seeds per cell, evaluated on the suite's standard initial states.
   - the backbone-only `pi05_base` latency measurement
   - a smoke test and unit tests for the delay wrapper
 - **A1: Oracle pilot (no VLM).** Conditions `none`, `task-id`, `oracle-delayed`, `oracle-fresh`.
+  - **A1-arch: architecture check (before the grid).** One seed, blind, LIBERO-Spatial, conditions `none` and `oracle-fresh`, head sizes 1M and 10M, core {GRU, causal transformer} × output head {L1 chunk regression, flow matching}. 16 runs (`scripts/a1_grid.py archcheck`).
+    - **Selection rule (fixed before any result):** pick the core/head with the highest mean `oracle-fresh` success over the two sizes. If the best is within 5 pp of GRU + L1 (the §3 default), keep GRU + L1. The rule uses `oracle-fresh` success only, never a gap between conditions, so the choice cannot tune toward a hypothesis.
+    - The chosen architecture is then fixed for every cell of the A1 grid and of A2, and logged in the Change log.
+  - **Implementation** (`src/ecvla/`: `sensors.py`, `prepare.py`, `vision.py`, `policy.py`, `train.py`, `evaluate.py`):
+    - Inputs at observation t: proprio from the state at t; the 3 torque (60 Hz) and 5 wrist F/T (100 Hz) samples of the previous control step, zeroed and flagged invalid at t=0 and after steps flagged unstable by the quality sidecar.
+    - Oracle state = per-object pose + gripper–object contact flag, plus the task token (z also carries the instruction, so the oracle gets it too). Object identity enters through an object-name embedding per slot.
+    - `oracle-delayed` training draws k ∈ {1, 10} per episode, with a delay of k−1..k+1 steps; evaluation uses exactly k.
+    - Data: demos that never reach the success predicate are dropped (the 20 wine-bottle demos); 2 demos per task are held out for the validation loss. One model per suite.
+    - `full` vision: frozen ImageNet ResNet-18, agent-view + wrist at 224 px (the dataset resolution), 512-d each; only the projection trains.
+    - Evaluation: LIBERO's 50 fixed initial states per task, 10 no-op settling steps, then at most 220 / 280 / 300 steps (Spatial / Object / Goal); the first action of each chunk is executed.
 - **A1b: Backbone stage.** FAST fine-tune of `pi05_base` → `z-ft-div` and `z-ft-lib`. Report `slow-only` success on LIBERO.
 - **A2: Latents.** Precompute z (`z-ft-div`, `z-ft-lib`, `z-frozen`; readout R1, plus R2 for `z-ft-div`) for all demo frames. Run closed-loop evaluation with z in the loop under the delay model. Add `z-ep0`, `z-refresh` and the probes.
 - Check whether `pi05_base` pretraining data includes LIBERO. If it does, log it as a threat to validity: z would be partly in-domain.
@@ -259,3 +269,8 @@ _Not started._
   - No hypothesis, condition or criterion changed.
 - 2026-10-28 (before any run): split into Phase A (LIBERO with existing demos, reduced grid, its own pre-registered criteria in §7.2) and Phase B (bootstrapped event/dynamic tasks, unchanged §6 criteria). Phase B is gated on Phase A, so we can start sooner and build our own dataset only if the concept shows up.
 - 2026-10-28 (before any run): the latent now comes from a two-stage pipeline. The `pi05_base` backbone is first fine-tuned on FAST+ action tokens (diverse data, primary variant without LIBERO), then frozen. Added variants `z-ft-lib` and `z-frozen`, readouts R1/R2, and the `slow-only` reference. A-z now names the primary latent. End-to-end adaptation is optional.
+- 2026-10-29 (before any A1 run):
+  - Added the A1-arch check with a selection rule fixed in advance (§7.1). The §3 architecture (GRU + L1 chunk head) stays the default unless the check shows another core/head is clearly better.
+  - Clarified the oracle conditions: they include the task token as well as object state, since z carries the instruction too. Without it, `oracle` vs `task-id` would confound state with task identity.
+  - Resolved for A1: `full` vision uses 224 px (the Phase A dataset resolution) and a frozen ResNet-18.
+  - No hypothesis or criterion changed.

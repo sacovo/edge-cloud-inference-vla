@@ -2,6 +2,34 @@
 
 Newest entries first. Each entry covers what was tried, the result, and what failed and why.
 
+## 2026-10-29: A1 fast-policy code written; architecture check designed
+
+- New in `src/ecvla/`:
+  - `sensors.py`: the multi-rate inputs (proprio, 60 Hz torque and 100 Hz F/T windows of the previous step), built identically from the dataset and from a live env.
+  - `prepare.py`: compact per-task training arrays, including gripper–object contact flags, which are part of the pre-registered oracle but were missing from the Phase A dataset.
+  - `vision.py`: frozen ResNet-18 features for `full` vision.
+  - `policy.py`: per-modality encoders → FiLM → core → cross-attention over condition tokens → chunk head, with width chosen to hit a head-size target. The core (GRU / causal transformer) and the head (L1 / flow matching) are swappable.
+  - `train.py`, `evaluate.py`: whole-episode training with randomized delay for `oracle-delayed`; closed-loop LIBERO eval on the 50 fixed initial states.
+- The author asked whether to research the small-policy architecture first. Decision: no separate research phase. Instead, a one-seed A1-arch check (16 runs, blind Spatial, `none`/`oracle-fresh`, 1M/10M, GRU vs transformer × L1 vs flow), with a selection rule fixed in advance in the EXP-0001 README. It picks on `oracle-fresh` success only, never on a gap.
+- Tests (38 pass):
+  - head sizes within ±40% of 10k/100k/1M/10M for every condition and architecture
+  - causality
+  - stepwise = whole-sequence features for both cores, so closed loop matches training
+  - masked state is ignored
+  - delay schedules
+  - training on synthetic data beats predicting the mean
+  - the online sensor windows match the offline builder in a live LIBERO env
+- Bugs caught on the way:
+  - the transformer's stepwise buffer must hold layers × (window − 1) inputs, not window − 1
+  - `env.reset()` (hard reset) rebuilds the sim, so the substep logger must be re-attached every episode, or the F/T windows are empty
+  - robosuite's `robot0_joint_pos` observable lags the sim state by ~2e-4 after a step; we read the sim state in both training and eval
+- Local smoke on 3 Spatial demos: prepare → vision → train (blind `oracle-delayed`; `full` `task-id` with transformer + flow) → closed-loop eval all run. Success 0, as expected. Blind eval ≈ 5 s per 220-step episode; vision ≈ 12 s locally (slower on CPU nodes with llvmpipe).
+- Not run on the cluster yet: `calculon` did not resolve from this machine (VPN?).
+- Next:
+  - debug-partition tests of `a1_prepare` / `a1_vision` / `a1_train` / `a1_eval`
+  - full prepare (30 tasks) and vision features
+  - the A1-arch check, then the A1 grid with the chosen architecture
+
 ## 2026-10-28: A0 Phase A dataset built and quality-checked
 
 - Dataset: `/scratch/sandro.covo/ecvla/phaseA/<suite>/<task>.h5`. 1,500 demos and 200,485 control steps (Spatial 62k, Object 75k, Goal 64k), 7.6 GB. Contents: 500 Hz torque/F/T/joint/gripper, 20 Hz object poses, 224 px JPEG agent-view + wrist renders, actions, sim states. The full build (30 × 4 CPUs) took ≤1 h 15 min per task. Summary: `experiments/EXP-0001-latent-taskid-vs-state/results/a0_phaseA_dataset_summary.json`.
