@@ -2,6 +2,14 @@
 
 Newest entries first. Each entry covers what was tried, the result, and what failed and why.
 
+## 2026-10-29: A1-teacher (H4) started: offloading the thinking, without a VLM
+
+- Preview of the blind grid (partial, not the A-test verdict): on LIBERO a blind `task-id` policy does as well as `oracle-fresh` (Spatial 10M: 75.9% vs 70.3%). Each task has its own fixed layout, so the task ID already determines where everything is. A-test is likely to fail, which per §7.2 means LIBERO cannot test whether z must carry state.
+- Validation L1 is the same at every head size (~0.065–0.07) while closed-loop success goes from 7% (10k) to 76% (10M). The small policy predicts single steps as well; it fails in closed loop.
+- The author pointed out that the primary question was always whether a tiny policy works when a larger slow model does the thinking. That is testable on LIBERO without a VLM: added H4 and the A1-teacher stage to EXP-0001 before any run (criteria in §7.1).
+- Implementation: `src/ecvla/teacher.py` (teacher latents on demo frames; teacher in the closed loop), condition `z-teacher` (task token + one z token with its age), `scripts/slurm/a1_teacher_latents.sbatch`, `scripts/a1_grid.py teacher`. 50 tests pass; real-env smoke run passed locally and on the cluster.
+- Cluster: teacher latents for Spatial/Object (6 jobs, <40 s each); 24 Spatial/Object student runs training on CPU; 96 evals (per run and k) are submitted as runs finish. Goal waits for its 10M teachers (still in the blind grid's GPU queue).
+
 ## 2026-10-29: A1-arch check done: GRU + L1 stays
 
 - 16 runs (blind, LIBERO-Spatial, 1 seed, 20k steps each), 160 eval jobs (50 episodes × 10 tasks per run). Summary: `experiments/EXP-0001-latent-taskid-vs-state/results/a1_archcheck_summary.json`.
