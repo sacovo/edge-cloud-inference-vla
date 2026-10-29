@@ -2,6 +2,26 @@
 
 Newest entries first. Each entry covers what was tried, the result, and what failed and why.
 
+## 2026-10-29: A1-arch check done: GRU + L1 stays
+
+- 16 runs (blind, LIBERO-Spatial, 1 seed, 20k steps each), 160 eval jobs (50 episodes × 10 tasks per run). Summary: `experiments/EXP-0001-latent-taskid-vs-state/results/a1_archcheck_summary.json`.
+
+| Core + head | oracle-fresh 1M | oracle-fresh 10M | mean | none 1M / 10M |
+|---|---|---|---|---|
+| GRU + flow | 32.0% | 73.0% | 52.5% | 1.0% / 5.2% |
+| GRU + L1 | 34.6% | 69.2% | 51.9% | 2.4% / 4.2% |
+| transformer + L1 | 14.6% | 59.4% | 37.0% | 0.8% / 6.0% |
+| transformer + flow | 11.2% | 58.2% | 34.7% | 0.2% / 3.6% |
+
+- Rule (pre-registered): GRU + flow leads GRU + L1 by 0.6 pp, inside 5 pp, so **GRU + L1 is fixed** for the grid and A2.
+- Observations (1 seed, not claims):
+  - Blind policies without any conditioning are near 0% (they don't even know the task), while blind `oracle-fresh` reaches 35–73%. Ground-truth state is very usable on Spatial; A-test (against `task-id`, not `none`) still has to be measured.
+  - Size matters a lot for the oracle: 1M → 10M roughly doubles success for every architecture.
+  - Validation L1 does not predict closed-loop success: the transformers have the lowest val L1 (0.053–0.061) but the worst success.
+  - Transformer runs train ~10× faster than GRU runs (1 min vs 7–18 min on an H200).
+- Bugs on the way: eval aborted for v1-data models after the fixture change (20 of 160 evals), fixed with a regression test; LR warmup divided by zero below 10 steps.
+- Next: the A1 grid (GRU + L1, `prepared_v2`). Compute check with the author first: blind cells are cheap; `full`-vision evals render on CPU and are the expensive part.
+
 ## 2026-10-29: A1 fast-policy code written; architecture check designed
 
 - New in `src/ecvla/`:
