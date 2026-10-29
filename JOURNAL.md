@@ -21,7 +21,8 @@ Newest entries first. Each entry covers what was tried, the result, and what fai
   - Transformer runs train ~10× faster than GRU runs (1 min vs 7–18 min on an H200).
 - Bugs on the way: eval aborted for v1-data models after the fixture change (20 of 160 evals), fixed with a regression test; LR warmup divided by zero below 10 steps.
 - A1 grid, blind half started (144 training runs, ≤6 GPUs at a time). Eval is one job per run (all 10 tasks × k in one process): 144 jobs instead of 1,800. The author asked whether 1,800 was too many: the cluster allowed it (no per-user limits, MaxJobCount 10,000), but per-run jobs avoid ~30 s startup per job, a stacked peak of hundreds of jobs and ~3,600 log files.
-- Next (was): the A1 grid (GRU + L1, `prepared_v2`). Compute check with the author first: blind cells are cheap; `full`-vision evals render on CPU and are the expensive part.
+- GPUs are the bottleneck (1–3 free at a time; ~12 runs/hour), while calc-cpu is mostly idle. Small heads train fine on 8 CPUs: 500 steps take 37 s (10k) / 62 s (100k), so a full run takes ~25 / ~41 min. Moved the 56 still-pending 10k/100k runs to `scripts/slurm/a1_train_cpu.sbatch` (≤36 at a time); 1M/10M stay on GPU.
+- The SSH tunnel dropped once; Slurm jobs continued, and the eval auto-submitter (keyed on `model.pt`) resumed afterwards. Compute check with the author first: blind cells are cheap; `full`-vision evals render on CPU and are the expensive part.
 
 ## 2026-10-29: A1 fast-policy code written; architecture check designed
 
