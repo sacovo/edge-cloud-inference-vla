@@ -2,6 +2,13 @@
 
 Newest entries first. Each entry covers what was tried, the result, and what failed and why.
 
+## 2026-10-30: Session handoff — EXP-0003 queued, nothing run yet
+
+- **State at 15:30:** replay 122192 (6), students 122193 (12) and submitter 122194 all PENDING on calc-cpu (c-001..004 reserved for `aiub-prime`, c-006/007 full). Slurm start estimates: students ~18:00, replay ~06:00 tomorrow, submitter ~16:00 tomorrow. Time limits lowered to 3 h / 5 h / 10 h. Author: keep waiting, do not move to the GPU node.
+- **Student evals only go out when the submitter runs**, or when someone runs `scripts/slurm/submit_ready_evals.sh experiments/EXP-0003-tracking-structure/manifests/student_eval.txt` on the login node (safe there; it shares the `.submitted` file with the submitter).
+- **When everything is in** (240 replay files under `$ECVLA_SCRATCH/exp0002/runs/teachers/*/*/eval_replay`, 480 under `$ECVLA_SCRATCH/exp0003/runs/students/*/*/eval`): rsync the JSONs, then `a1_summarize.py <runs>/students --out students_track.json`, `a1_summarize.py <exp0002 runs>/teachers --eval-dir eval_replay --out replay.json`, `exp0003_summarize.py students_track.json replay.json --out exp0003_summary.json`; fill README §8, registry, QUEUE, journal.
+- **Still owed for §6:** the fraction of steps at the residual bound (promised in §6; not computed yet; can be done on held-out demos like the EXP-0002 post-hoc check).
+
 ## 2026-10-30: EXP-0003 (tracking structure) pre-registered and started
 
 - Author's choices: one combined arm (age-aligned 8-step plan window + bounded per-step residual), primary at 100k / k = 20 (supported if ≥ 50% of the H40 teacher and ≥ +15 pp over EXP-0002's 11.6%), act unbounded before the first plan. Reference arm `replay`: the teacher executes its own delayed plan (queue #3 note from the EXP-0002 post-hoc).
