@@ -2,6 +2,15 @@
 
 Newest entries first. Each entry covers what was tried, the result, and what failed and why.
 
+## 2026-10-30: EXP-0002 started — debug runs pass; 6 H = 40 teachers queued
+
+- **EXP-0001 leftover closed:** Goal 10M `oracle-fresh` s0 (job 277004, h200, 20 min) and its eval finished: 81.2% (s1/s2: 80.0/80.2%). `results/a1_grid_blind_summary.json` refreshed (one new row; the other 179 unchanged). Does not enter any EXP-0001 criterion.
+- **EXP-0002 analysis fixed before any run:** `scripts/exp0002_summarize.py` (§5 pooling, ratio to own teacher, paired bootstrap over seeds). Fed EXP-0001's H8 data on both sides it reproduces H4 (10k k=1 41.4%, ratio 0.48, teacher 86.6%).
+- **Debug runs (all pass, under `$ECVLA_SCRATCH/exp0002_debug`):** H40 teacher 200 steps on `debug` (2080 Ti, 87 s); its latents on `cpu-debug` (10 files, `z_chunk` 280-d, `z_hidden` 704-d); 10k student 200 steps (`latent_dim` 280, d = 16, 10,056 params); 2-episode eval at k = 10 with the H40 teacher in the loop (0/2, expected after 200 steps).
+- **Widths (§6):** teacher H8 d = 768 (10.74M head params) vs H40 d = 704 (9.19M; the 40 × 7 output layer takes part of the 10M budget); 10k student H8 d = 20 vs H40 d = 16; 100k H8 d = 84 (H40: when trained).
+- Full runs: 6 teachers (array 277058, `-p h200`, 8 h limit); cluster-side submitter 122009 watches `teacher_eval.txt` and `student_eval.txt`. Latents and students are submitted when the teachers finish.
+- Slip: the first debug-teacher submission passed `--out \$ECVLA_SCRATCH/...` as an extra arg; extra args are not expanded inside the job's `eval`, so it would have written to a literal `$ECVLA_SCRATCH` dir. Cancelled within seconds (no dir created); pass absolute paths for extra args.
+
 ## 2026-10-30: Session handoff — EXP-0002 pre-registered; latent compression queued
 
 - **EXP-0002 criteria approved by the author** before any run; status pre-registered. Next session starts its §7: debug runs (one H = 40 teacher for 200 steps on `debug`/`h200`, its latents, one student for 200 steps, a 2-episode eval), then 6 teachers, teacher evals, latents, 12 students, 48 evals. Manifests: `python3 scripts/exp0002_manifests.py` (paths under `$ECVLA_SCRATCH/exp0002`). Use the cluster-side submitter for evals.
