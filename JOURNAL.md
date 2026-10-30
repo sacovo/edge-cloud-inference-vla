@@ -2,6 +2,15 @@
 
 Newest entries first. Each entry covers what was tried, the result, and what failed and why.
 
+## 2026-10-30: EXP-0003 (tracking structure) pre-registered and started
+
+- Author's choices: one combined arm (age-aligned 8-step plan window + bounded per-step residual), primary at 100k / k = 20 (supported if ≥ 50% of the H40 teacher and ≥ +15 pp over EXP-0002's 11.6%), act unbounded before the first plan. Reference arm `replay`: the teacher executes its own delayed plan (queue #3 note from the EXP-0002 post-hoc).
+- Code: `PolicyConfig.track`/`track_bound`, `plan_window` (shared by training and closed loop), `--track`, `evaluate --replay` (results in `<teacher>/eval_replay`), `a1_summarize --eval-dir`. Tests: 60 pass, including zero-residual student == replay in closed loop. Analysis script `scripts/exp0003_summarize.py` written before any run.
+- Debug: 10k `track` student d = 20, 9,036 params; val L1 0.123 after 200 steps (EXP-0002 debug student: 0.257). Replay at k = 20 succeeded on 2/2 episodes of Spatial task 0 (77 steps); the 200-step student 0/2.
+- Observation (before any result, recorded in §6, not changed): the 0.5 raw bound is ~1 std on position but ~10 std on rotation, so it effectively bounds position only.
+- Full runs: replay 122192 (6 teachers × 4 k), students 122193, submitter 122194 (48 evals). No GPU.
+- Slip: read a run's info.json with `python3 -c` on the login node (trivial file read, but the rule is git/sbatch/squeue only; use `grep`/`cat` or fetch locally).
+
 ## 2026-10-30: EXP-0002 post-hoc — the plan goes stale gradually, success falls off a cliff
 
 - The author suggested that k = 20 collapses because far plan steps no longer apply. Checked by teacher L1 per chunk step j on held-out demos (`scripts/exp0002_chunk_error.py`, job 122176, ~10 min on cpu-debug; j = 0 reproduces the logged val L1).
