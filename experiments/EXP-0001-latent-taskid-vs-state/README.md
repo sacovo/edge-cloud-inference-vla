@@ -263,7 +263,26 @@ Start Phase B (bootstrapped event/dynamic tasks, §4 demonstrations, full grid, 
 
 ## 10. Results
 
-_Not started._
+### A-test (Phase A, blind, A1 grid): **fails** (2026-10-30)
+
+`oracle-fresh` minus `task-id`, blind, Spatial + Object pooled, 3 seeds (500 episodes per seed and suite): 10k −1.8 pp, 100k +4.1, 1M −2.4, 10M −4.7. No size reaches the 20 pp bar. Per §7.2: LIBERO does not need scene state for blind policies (each task has its own fixed layout, so the task ID determines where things are); this is not evidence against the concept. Per §7.3, Phase B is now the only test of H1–H3. Summary: `results/a1_grid_blind_summary.json` (the Goal 10M `oracle-fresh` seed 0 run timed out and was resubmitted; it does not enter A-test).
+
+### H4 (A1-teacher): **not supported as pre-registered; not refuted** (2026-10-30)
+
+10k student, chunk latent, k = 1, Spatial + Object pooled, 3 seeds: success 41.4% vs the teacher's 86.6%, a ratio of **0.48** (seed range 0.39–0.64), below the ≥ 0.50 bar; the gap to 10k `task-id` is **+36.9 pp** (seed range +27.2 to +50.9), above the ≥ 20 pp bar. Both parts are required, so H4 is not supported; the refutation criterion (within 10 pp of `task-id`) is clearly not met. Summary: `results/a1_teacher_summary.json`.
+
+Reported, not gating (success %, mean of 3 seeds):
+
+| Suite | Teacher (10M `task-id`) | 10k `task-id` | 10k + chunk k=1 / 4 / 10 / 20 | 100k `task-id` | 100k + chunk k=1 / 4 / 10 / 20 | 100k + hidden k=1 / 4 / 10 / 20 |
+|---|---|---|---|---|---|---|
+| Spatial | 75.9 | 7.4 | 31.1 / 33.4 / 7.6 / 1.0 | 7.4 | 64.1 / 68.7 / 27.4 / 5.9 | 66.0 / 69.3 / 26.5 / 7.1 |
+| Object | 97.3 | 1.7 | 51.7 / 55.0 / 2.4 / 0.1 | 8.1 | 92.3 / 94.7 / 49.9 / 5.1 | 90.5 / 84.6 / 54.3 / 10.9 |
+| Goal | 85.7 | 17.0 | 46.7 / 59.1 / 25.3 / 12.3 | 19.5 | 76.4 / 86.5 / 40.3 / 14.5 | 74.8 / 81.9 / 55.0 / 18.9 |
+
+- At 100k the student recovers 84–95% of the teacher's success at k ≤ 4 (task-id alone: 7–20%).
+- The largest k holding ≥ 50% of the teacher's success is 4 for every suite and both sizes (chunk); k = 10 holds it only for 100k on Object (chunk and hidden) and Goal (hidden). With period k and delay k, the 8-step chunk has run out at k ≥ 10, so this curve is confounded with the chunk length (addressed by the draft amendment A1-teacher v2).
+- 10k with the hidden-state latent fails (≤ 20%): the 768-d latent takes most of the 10k budget (reader-inferred, not tested).
+
 
 ## Change log
 

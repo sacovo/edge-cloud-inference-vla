@@ -2,6 +2,13 @@
 
 Newest entries first. Each entry covers what was tried, the result, and what failed and why.
 
+## 2026-10-30: A-test fails; H4 just misses its bar; 100k students nearly match the teacher
+
+- **A-test fails** (blind, Spatial + Object, 3 seeds): `oracle-fresh` − `task-id` = −1.8 / +4.1 / −2.4 / −4.7 pp at 10k / 100k / 1M / 10M. LIBERO tasks are solved from the task ID. Per §7.2–7.3, Phase B is the only test of the state hypotheses.
+- **H4 not supported as pre-registered, not refuted:** 10k student + teacher chunk at k = 1 reaches 41.4% vs the teacher's 86.6% (ratio 0.48 < 0.50 bar), but +36.9 pp over 10k `task-id` (> 20 pp bar). Kept as pre-registered; not re-interpreted.
+- **Strong secondary result:** 100k students reach 84–95% of the teacher at k ≤ 4 (Spatial 64–69 vs 76, Object 92–95 vs 97, Goal 76–87 vs 86), against 7–20% for 100k `task-id`. Success collapses at k ≥ 10, which coincides with the 8-step chunk running out (draft amendment). The hidden-state latent works at 100k but not at 10k.
+- Ops: all 1,440 student evals done; one blind-grid run (Goal 10M `oracle-fresh` s0) timed out after 4 h on an RTX 2080 node, resubmitted to `h200` with 8 h. Avoid 2080 nodes for 10M runs.
+
 ## 2026-10-29: Theme 7 review (learned filtering, Kalman-inspired mechanisms); A1-teacher v2 drafted
 
 - The author asked for classical-control ideas: a Kalman predict/update view of the slow/fast split, and an **innovation-based gain** instead of an age-based one (a dropped object is invisible to age, but unexpected torque/F-T given the plan is not).
