@@ -175,3 +175,12 @@ def test_track_student_trains_on_the_aligned_window_and_runs_closed_loop(data_di
     plan0 = rep.online.history[0].reshape(40, 7)
     np.testing.assert_allclose(acts[24], plan0[24] * s + m, rtol=1e-5)  # step 24 executes plan(0)[age 24]
     np.testing.assert_allclose(acts[5], rep.online.history[5].reshape(40, 7)[0] * s + m, rtol=1e-5)  # no plan yet
+
+    # with a zero residual, the student executes exactly what replay executes once a plan has arrived
+    np.testing.assert_allclose(ckpt["stats"]["actions"], teacher.stats["actions"], rtol=1e-6)
+    sd = {k: (torch.zeros_like(v) if k.startswith("head.") else v) for k, v in ckpt["state_dict"].items()}
+    r = Runner(dict(ckpt, state_dict=sd), "b")
+    r.reset(40, np.random.default_rng(0), k=20, teacher=teacher)
+    student = [r.act(obs) for _ in range(40)]
+    np.testing.assert_allclose(np.array(student[20:]), np.array(acts[20:] + [rep.act(obs) for _ in range(15)]),
+                               rtol=1e-5, atol=1e-6)

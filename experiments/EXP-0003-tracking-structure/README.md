@@ -1,6 +1,6 @@
 # EXP-0003: Does a tracking structure let a small policy use an old plan?
 
-- **Status:** pre-registered (criteria approved by the author 2026-10-30); not started
+- **Status:** running (pre-registered 2026-10-30; debug runs passed, full runs started 2026-10-30)
 - **Platform:** LIBERO-Spatial and LIBERO-Object, blind fast policies, simulated delay (same setup as EXP-0002)
 - **Related:** EXP-0002 §8 (H1 result and the post-hoc plan-error check), `experiments/QUEUE.md` (#3); literature Theme 7 Sec. 1 row R and Sec. 3 (residual feedback around a plan; age-indexed plans).
 
@@ -62,6 +62,7 @@ Reported, not gating:
 - **Two mechanisms in one arm (author's choice).** If H1 holds, the window and the residual are not separated; a follow-up can take them apart.
 - **The window is also a compression.** z shrinks from 280-d to 56-d, so at a fixed head budget the student's own width grows (EXP-0002: d 16 / 76 at 10k / 100k with 280-d z; EXP-0001: d 20 / 84 with 56-d z). Overlaps with queue #6 (latent compression), most of all at 10k. Report widths.
 - **The residual bound is a design choice** (0.5, arm dimensions only), taken from one source on LIBERO, not tuned. A failure could be the bound; reported with the residual magnitudes the student actually uses (fraction of steps at the bound).
+- **The bound is uneven in normalized units** (observed in the debug run, before any result; not changed): 0.5 raw is ~1.0–1.4 action std on position but ~7–13 std on rotation, whose actions are small. In effect the bound constrains position only.
 - **`replay` before the first plan** acts on the teacher's own fresh output for the first k steps; this favours `replay` slightly at k = 20 (20 fresh steps per episode).
 
 ## 7. Plan and cost
@@ -81,3 +82,4 @@ _Not started._
 
 - 2026-10-30: initial draft. Scope (one combined arm), primary location (100k, k = 20) and no-plan handling (act unbounded) chosen by the author.
 - 2026-10-30: criteria approved by the author before any run; code, tests (59 pass), manifests (`scripts/exp0003_manifests.py`) and the analysis script (`scripts/exp0003_summarize.py`) written before any run.
+- 2026-10-30 (debug runs, before any full run): 10k `track` student trains (d = 20, 9,036 params, z 56-d; val L1 0.123 after 200 steps vs 0.257 for the EXP-0002 debug student); `replay` and student evals run at k = 20. Added a test that a zero-residual student executes exactly what `replay` executes once a plan has arrived. Noted the uneven bound in §6. No criterion changed.
