@@ -23,7 +23,7 @@ import numpy as np
 import torch
 
 from ecvla.latency import DelayModel, schedule
-from ecvla.policy import ACT_DIM, CHUNK, FastPolicy, config_dict, config_for_size
+from ecvla.policy import ACT_DIM, FastPolicy, config_dict, config_for_size
 from ecvla.prepare import load
 from ecvla.vision import FEATURE_DIM
 
@@ -128,8 +128,8 @@ def state_source(T: int, condition: str, rng: np.random.Generator, k: int | None
 
 
 class Batcher:
-    def __init__(self, data: EpisodeData, stats: dict, condition: str, device):
-        self.data, self.condition, self.device = data, condition, device
+    def __init__(self, data: EpisodeData, stats: dict, condition: str, device, chunk: int):
+        self.data, self.condition, self.device, self.chunk = data, condition, device, chunk
         self.rows = {}
         for k, x in data.rows.items():
             if k in stats:
@@ -149,12 +149,12 @@ class Batcher:
         src_idx = np.zeros((B, T), np.int64)
         avail = np.zeros((B, T), bool)
         age = np.zeros((B, T), np.float32)
-        tgt_idx = np.zeros((B, T, CHUNK), np.int64)
-        tgt_mask = np.zeros((B, T, CHUNK), bool)
+        tgt_idx = np.zeros((B, T, self.chunk), np.int64)
+        tgt_mask = np.zeros((B, T, self.chunk), bool)
         for i, (start, n, _, _) in enumerate(episodes):
             idx[i] = start + np.minimum(t, n - 1)
             step_mask[i, :n] = True
-            j = t[:, None] + np.arange(CHUNK)[None]
+            j = t[:, None] + np.arange(self.chunk)[None]
             tgt_idx[i] = start + np.minimum(j, n - 1)
             tgt_mask[i] = (j < n) & step_mask[i, :, None]
             if self.condition != "none" and self.condition != "task-id":
@@ -225,10 +225,10 @@ def train(a) -> dict:
         a.size, cond=CONDITIONS[a.condition], n_tasks=len(data.tasks), n_names=len(data.names),
         vision_dim=FEATURE_DIM if a.vision == "full" else 0, age_input=a.age_input, core=a.core, head=a.head,
         fixtures=CONDITIONS[a.condition] == "state" and data.max_fix > 0,
-        latent_dim=data.rows["latent"].shape[-1] if latent else 0,
+        latent_dim=data.rows["latent"].shape[-1] if latent else 0, chunk=a.chunk,
     )
     model = FastPolicy(cfg).to(device)
-    batcher = Batcher(data, stats, a.condition, device)
+    batcher = Batcher(data, stats, a.condition, device, cfg.chunk)
     train_eps, val_eps = data.split(False), data.split(True)
     act_std = torch.tensor(stats["actions"][1], device=device)
     opt = torch.optim.AdamW(model.parameters(), lr=a.lr, weight_decay=a.weight_decay)
@@ -285,6 +285,7 @@ def parser() -> argparse.ArgumentParser:
     ap.add_argument("--core", choices=["gru", "tf"], default="gru")
     ap.add_argument("--head", choices=["l1", "flow"], default="l1")
     ap.add_argument("--age-input", action="store_true")
+    ap.add_argument("--chunk", type=int, default=8, help="predicted action-chunk length (EXP-0002 teachers: 40)")
     ap.add_argument("--latent-dir", help="z-teacher: teacher.py output root (<dir>/<suite>/<task>.npz)")
     ap.add_argument("--latent-kind", choices=["chunk", "hidden"], default="chunk")
     ap.add_argument("--teacher", help="z-teacher: teacher run dir (recorded for closed-loop eval)")

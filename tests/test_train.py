@@ -108,3 +108,17 @@ def test_teacher_latents_train_a_student_and_drive_the_runner(data_dir, tmp_path
         a = r.act(obs)
     assert np.isfinite(a).all() and len(r.online_teacher.history) == 6
     np.testing.assert_array_equal(r.src[:6], [-1, -1, -1, -1, 0, 0])  # exactly k = 4 steps late
+
+
+def test_long_chunk_teacher_gives_wide_latents(data_dir, tmp_path):
+    """EXP-0002: a 40-step teacher's chunk latent is 40 x 7 = 280 wide, aligned with the data rows."""
+    from ecvla.teacher import precompute
+
+    teacher_dir = tmp_path / "teacher40"
+    train(parser().parse_args(["--data", str(data_dir), "--suites", "libero_fake", "--steps", "20", "--batch", "4",
+                               "--log-every", "10", "--val-per-task", "1", "--device", "cpu", "--condition", "task-id",
+                               "--size", "20000", "--chunk", "40", "--out", str(teacher_dir)]))
+    assert torch.load(teacher_dir / "model.pt", weights_only=False)["info"]["policy"]["chunk"] == 40
+    precompute(str(teacher_dir), str(data_dir / "libero_fake"), str(tmp_path / "z/libero_fake"))
+    z = np.load(tmp_path / "z/libero_fake/a_demo.npz")["z_chunk"]
+    assert z.shape == (np.load(data_dir / "libero_fake/a_demo.npz")["ep_start"][-1], 280)

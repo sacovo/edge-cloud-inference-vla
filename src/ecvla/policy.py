@@ -3,7 +3,7 @@
 Per control step (20 Hz):
   one encoder per modality (proprio, torque window, F/T window, optional frozen-vision features), summed
   -> FiLM from the pooled conditioning -> temporal core -> cross-attention over the conditioning tokens
-  -> action-chunk head (CHUNK x 7). At run time only the first action of each chunk is executed.
+  -> action-chunk head (chunk x 7; default CHUNK = 8). At run time only the first action of each chunk is executed.
 
 Swappable parts (fixed for the whole grid after the A1 architecture check; see the EXP-0001 change log):
 - core "gru": GRU (the pre-registered default); "tf": causal transformer over the last WINDOW steps (ALiBi bias)
@@ -29,7 +29,7 @@ from torch.nn import functional as F
 
 from ecvla.sensors import FT_DIM, PROPRIO_DIM, TORQUE_DIM
 
-CHUNK = 8
+CHUNK = 8  # default chunk length (EXP-0001); PolicyConfig.chunk overrides it (EXP-0002 teachers: 40)
 ACT_DIM = 7
 OBJ_DIM = 8  # pos(3) + quat(4) + gripper contact(1)
 WINDOW = 16  # transformer context, control steps (0.8 s)
@@ -48,6 +48,7 @@ class PolicyConfig:
     age_input: bool = False
     fixtures: bool = False  # fixture-joint tokens (state conditions in scenes with drawers / knobs)
     latent_dim: int = 0  # z size for latent conditions (its age is always appended)
+    chunk: int = CHUNK  # predicted action-chunk length
     core: str = "gru"  # gru | tf
     head: str = "l1"  # l1 | flow
 
@@ -102,16 +103,17 @@ class TransformerCore(nn.Module):
 class FlowHead(nn.Module):
     """Velocity field v(a_tau, tau | f) for flow matching from Gaussian noise (tau=0) to the action chunk (tau=1)."""
 
-    def __init__(self, d: int):
+    def __init__(self, d: int, chunk: int = CHUNK):
         super().__init__()
-        n = CHUNK * ACT_DIM
+        self.chunk = chunk
+        n = chunk * ACT_DIM
         self.net = nn.Sequential(nn.Linear(n + 1 + d, 2 * d), nn.GELU(), nn.Linear(2 * d, 2 * d), nn.GELU(), nn.Linear(2 * d, n))
 
     def velocity(self, a, tau, f):
         return self.net(torch.cat([a, tau, f], -1))
 
     def loss(self, f, target):
-        """Per-element squared velocity error, shaped like target (..., CHUNK, 7)."""
+        """Per-element squared velocity error, shaped like target (..., chunk, 7)."""
         a1 = target.flatten(-2)
         a0 = torch.randn_like(a1)
         tau = torch.rand(*a1.shape[:-1], 1, device=a1.device, dtype=a1.dtype)
@@ -120,11 +122,11 @@ class FlowHead(nn.Module):
 
     @torch.no_grad()
     def sample(self, f, generator=None):
-        a = torch.randn(*f.shape[:-1], CHUNK * ACT_DIM, device=f.device, dtype=f.dtype, generator=generator)
+        a = torch.randn(*f.shape[:-1], self.chunk * ACT_DIM, device=f.device, dtype=f.dtype, generator=generator)
         for s in range(FLOW_STEPS):
             tau = torch.full((*f.shape[:-1], 1), s / FLOW_STEPS, device=f.device, dtype=f.dtype)
             a = a + self.velocity(a, tau, f) / FLOW_STEPS
-        return a.view(*f.shape[:-1], CHUNK, ACT_DIM)
+        return a.view(*f.shape[:-1], self.chunk, ACT_DIM)
 
 
 class FastPolicy(nn.Module):
@@ -157,7 +159,7 @@ class FastPolicy(nn.Module):
             self.core = nn.GRU(d, d, num_layers=cfg.layers, batch_first=True)
         else:
             self.core = TransformerCore(d, cfg.layers, cfg.heads)
-        self.head = nn.Linear(d, CHUNK * ACT_DIM) if cfg.head == "l1" else FlowHead(d)
+        self.head = nn.Linear(d, cfg.chunk * ACT_DIM) if cfg.head == "l1" else FlowHead(d, cfg.chunk)
 
     def head_params(self) -> int:
         return sum(p.numel() for n, p in self.named_parameters() if not n.startswith("vis_proj"))
@@ -219,16 +221,16 @@ class FastPolicy(nn.Module):
         return self.o(torch.einsum("bthn,btnhc->bthc", att, v).reshape(B, T, d))
 
     def loss(self, f: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
-        """Per-element loss (B, T, CHUNK, 7) on normalized actions; the caller masks and averages."""
+        """Per-element loss (B, T, chunk, 7) on normalized actions; the caller masks and averages."""
         if self.cfg.head == "l1":
             return (self.head(f).view_as(target) - target).abs()
         return self.head.loss(f, target)
 
     @torch.no_grad()
     def act(self, f: torch.Tensor, generator=None) -> torch.Tensor:
-        """Normalized action chunk (B, T, CHUNK, 7)."""
+        """Normalized action chunk (B, T, chunk, 7)."""
         if self.cfg.head == "l1":
-            return self.head(f).view(*f.shape[:-1], CHUNK, ACT_DIM)
+            return self.head(f).view(*f.shape[:-1], self.cfg.chunk, ACT_DIM)
         return self.head.sample(f, generator)
 
 

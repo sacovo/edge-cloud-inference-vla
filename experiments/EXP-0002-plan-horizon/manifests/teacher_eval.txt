@@ -1,0 +1,6 @@
+$ECVLA_SCRATCH/exp0002/runs/teachers/libero_spatial/task-id_10M_h40_s0 libero_spatial -
+$ECVLA_SCRATCH/exp0002/runs/teachers/libero_spatial/task-id_10M_h40_s1 libero_spatial -
+$ECVLA_SCRATCH/exp0002/runs/teachers/libero_spatial/task-id_10M_h40_s2 libero_spatial -
+$ECVLA_SCRATCH/exp0002/runs/teachers/libero_object/task-id_10M_h40_s0 libero_object -
+$ECVLA_SCRATCH/exp0002/runs/teachers/libero_object/task-id_10M_h40_s1 libero_object -
+$ECVLA_SCRATCH/exp0002/runs/teachers/libero_object/task-id_10M_h40_s2 libero_object -

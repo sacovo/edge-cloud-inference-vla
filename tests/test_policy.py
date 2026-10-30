@@ -109,3 +109,20 @@ def test_state_source_delays():
         t = np.arange(60)
         ok = src >= 0
         assert (t[ok] - src[ok] >= 9).all() and (src[:9] == -1).all()
+
+
+def test_default_chunk_keeps_exp0001_models_unchanged():
+    """EXP-0001's 10M Spatial task-id teacher (seed 0) logged head_params 10,737,464 (n_tasks=10, n_names=9)."""
+    cfg = config_for_size(10_000_000, cond="task", n_tasks=10, n_names=9)
+    assert cfg.chunk == 8 and count_head_params(cfg) == 10_737_464
+
+
+@pytest.mark.parametrize("head", ["l1", "flow"])
+def test_long_chunk_shapes_and_stepwise(head):
+    torch.manual_seed(0)
+    m = FastPolicy(PolicyConfig(d=32, layers=1, cond="task", n_tasks=3, n_names=7, head=head, chunk=40)).eval()
+    b = batch(T=12)
+    with torch.no_grad():
+        f, _ = m.features(b)
+        assert m.act(f).shape == (2, 12, 40, 7)
+        assert m.loss(f, torch.zeros(2, 12, 40, 7)).shape == (2, 12, 40, 7)

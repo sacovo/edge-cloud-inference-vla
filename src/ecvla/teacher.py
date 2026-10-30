@@ -1,7 +1,7 @@
 """Slow "teacher" for EXP-0001 A1-teacher (H4): a trained large fast policy whose output becomes the latent z.
 
 The teacher is a trained blind `task-id` policy (the 10M GRU of the same suite and seed). Its z is either its
-predicted action chunk (CHUNK x 7, in its normalized action units, flattened) or its core features (d). The teacher
+predicted action chunk (its chunk length x 7, in its normalized action units, flattened) or its core features (d). The teacher
 sees every observation (it is recurrent); the delay model only limits when its output reaches the fast policy.
 
 Precompute on demo frames (training latents), one .npz per prepared task file, rows aligned with it:
@@ -42,7 +42,7 @@ class Teacher:
 
     @torch.no_grad()
     def latents(self, b: dict, state=None) -> tuple[dict, object]:
-        """Both z kinds for every step of b: {"chunk": (T, CHUNK*7), "hidden": (T, d)}, plus the core state."""
+        """Both z kinds for every step of b: {"chunk": (T, chunk*7), "hidden": (T, d)}, plus the core state."""
         f, state = self.model.features(b, state)
         chunk = self.model.act(f)[0].flatten(-2)
         return {"chunk": chunk.cpu().numpy(), "hidden": f[0].cpu().numpy()}, state

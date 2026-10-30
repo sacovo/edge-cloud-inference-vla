@@ -2,6 +2,13 @@
 
 Newest entries first. Each entry covers what was tried, the result, and what failed and why.
 
+## 2026-10-30: Work restructured into single-question experiments; EXP-0001 closed; EXP-0002 designed
+
+- The author asked to stagger the work: one question per experiment, each with its own result, combined at the end, instead of one large amendment. The 9-variant draft "A1-teacher v2" was retired (git 43cf56e) and split into `experiments/QUEUE.md` (plan horizon → tracking structure → late arrivals → innovation trust; VLM latents, state tasks and infrastructure as independent items).
+- EXP-0001 closed after Phase A (results in its §10).
+- Merged literature Theme 8 (JEPA / predictive latents, 19 sources, verified): a ~9K-parameter JEPA predictor runs at 100 Hz on a Jetson Orin NX (SkyJEPA), but nobody rolls a delayed remote latent forward; V-JEPA 2 features recover LIBERO object state better than SigLIP (vision towers only).
+- EXP-0002 designed (`experiments/EXP-0002-plan-horizon/README.md`): teacher chunk 8 → 40 steps (covers ages up to 39 at k = 20), everything else as EXP-0001; primary criterion at 100k, k = 10. Chunk length is now a model setting (default 8; EXP-0001 teacher parameter count reproduced in a test). Not run yet.
+
 ## 2026-10-30: A-test fails; H4 just misses its bar; 100k students nearly match the teacher
 
 - **A-test fails** (blind, Spatial + Object, 3 seeds): `oracle-fresh` − `task-id` = −1.8 / +4.1 / −2.4 / −4.7 pp at 10k / 100k / 1M / 10M. LIBERO tasks are solved from the task ID. Per §7.2–7.3, Phase B is the only test of the state hypotheses.
