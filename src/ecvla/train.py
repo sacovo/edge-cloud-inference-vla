@@ -23,7 +23,7 @@ import numpy as np
 import torch
 
 from ecvla.latency import DelayModel, schedule
-from ecvla.policy import ACT_DIM, FastPolicy, config_dict, config_for_size
+from ecvla.policy import ACT_DIM, FastPolicy, config_dict, config_for_size, plan_window
 from ecvla.prepare import load
 from ecvla.vision import FEATURE_DIM
 
@@ -128,8 +128,9 @@ def state_source(T: int, condition: str, rng: np.random.Generator, k: int | None
 
 
 class Batcher:
-    def __init__(self, data: EpisodeData, stats: dict, condition: str, device, chunk: int):
-        self.data, self.condition, self.device, self.chunk = data, condition, device, chunk
+    def __init__(self, data: EpisodeData, stats: dict, condition: str, device, chunk: int, track: bool = False):
+        """track (EXP-0003): z is the plan window due at each step's age, in the plan's own (normalized action) units."""
+        self.data, self.condition, self.device, self.chunk, self.track = data, condition, device, chunk, track
         self.rows = {}
         for k, x in data.rows.items():
             if k in stats:
@@ -171,6 +172,9 @@ class Batcher:
         b.update(fix_state=g("fix_state", src_idx), fix_name=self.fix_name[task], fix_mask=self.fix_mask[task])
         if "latent" in self.rows:
             b["latent"] = g("latent", src_idx)
+            if self.track:
+                age_steps = torch.from_numpy(np.rint(age * CONTROL_HZ).astype(np.int64)).to(dev)
+                b["latent"] = plan_window(b["latent"], age_steps, self.chunk)
         b["state_avail"] = torch.from_numpy(avail).to(dev)
         b["age"] = torch.from_numpy(age).to(dev)
         target = g("actions", tgt_idx)
@@ -198,7 +202,7 @@ def val_first_action_l1(model, batcher, episodes, rng, std) -> float:
     for i in range(0, len(episodes), 16):
         b, target, mask = batcher(episodes[i : i + 16], rng)
         f, _ = model.features(b)
-        err = ((model.act(f, gen)[:, :, 0] - target[:, :, 0]).abs() * std).sum(-1)
+        err = ((model.act(f, gen, b)[:, :, 0] - target[:, :, 0]).abs() * std).sum(-1)
         tot += float((err * mask[:, :, 0]).sum())
         n += int(mask[:, :, 0].sum()) * ACT_DIM
     model.train()
@@ -221,14 +225,21 @@ def train(a) -> dict:
     data = EpisodeData(a.data, a.suites, a.vision_dir if a.vision == "full" else None, a.val_per_task,
                        a.latent_dir if latent else None, a.latent_kind)
     stats = data.norm_stats()
+    track = {}
+    if a.track:  # the plan is already in normalized action units; bound the arm dims, not the gripper
+        assert latent and a.latent_kind == "chunk", "--track needs a z-teacher chunk latent"
+        stats.pop("latent")
+        std = np.asarray(stats["actions"][1])
+        track = dict(track=True, track_bound=tuple([a.track_bound / x for x in std[:6]] + [0.0]))
     cfg = config_for_size(
         a.size, cond=CONDITIONS[a.condition], n_tasks=len(data.tasks), n_names=len(data.names),
         vision_dim=FEATURE_DIM if a.vision == "full" else 0, age_input=a.age_input, core=a.core, head=a.head,
         fixtures=CONDITIONS[a.condition] == "state" and data.max_fix > 0,
-        latent_dim=data.rows["latent"].shape[-1] if latent else 0, chunk=a.chunk,
+        latent_dim=(a.chunk * ACT_DIM if a.track else data.rows["latent"].shape[-1]) if latent else 0, chunk=a.chunk,
+        **track,
     )
     model = FastPolicy(cfg).to(device)
-    batcher = Batcher(data, stats, a.condition, device, cfg.chunk)
+    batcher = Batcher(data, stats, a.condition, device, cfg.chunk, cfg.track)
     train_eps, val_eps = data.split(False), data.split(True)
     act_std = torch.tensor(stats["actions"][1], device=device)
     opt = torch.optim.AdamW(model.parameters(), lr=a.lr, weight_decay=a.weight_decay)
@@ -250,7 +261,7 @@ def train(a) -> dict:
         b, target, mask = batcher(eps, rng)
         with torch.autocast(device.type, dtype=torch.bfloat16, enabled=amp):
             f, _ = model.features(b)
-            loss = masked_mean(model.loss(f.float(), target), mask)
+            loss = masked_mean(model.loss(f.float(), target, b), mask)
         opt.zero_grad(set_to_none=True)
         loss.backward()
         gn = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -289,6 +300,9 @@ def parser() -> argparse.ArgumentParser:
     ap.add_argument("--latent-dir", help="z-teacher: teacher.py output root (<dir>/<suite>/<task>.npz)")
     ap.add_argument("--latent-kind", choices=["chunk", "hidden"], default="chunk")
     ap.add_argument("--teacher", help="z-teacher: teacher run dir (recorded for closed-loop eval)")
+    ap.add_argument("--track", action="store_true",
+                    help="EXP-0003: age-aligned plan window as z, output = plan + bounded per-step residual")
+    ap.add_argument("--track-bound", type=float, default=0.5, help="residual bound on the arm dims, raw action units")
     ap.add_argument("--steps", type=int, default=20000)
     ap.add_argument("--batch", type=int, default=32, help="episodes per batch")
     ap.add_argument("--lr", type=float, default=3e-4)

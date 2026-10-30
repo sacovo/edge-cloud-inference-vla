@@ -1,6 +1,6 @@
 # EXP-0003: Does a tracking structure let a small policy use an old plan?
 
-- **Status:** draft, awaiting the author's approval of §5 (scope, primary location and no-plan handling chosen by the author 2026-10-30)
+- **Status:** pre-registered (criteria approved by the author 2026-10-30); not started
 - **Platform:** LIBERO-Spatial and LIBERO-Object, blind fast policies, simulated delay (same setup as EXP-0002)
 - **Related:** EXP-0002 §8 (H1 result and the post-hoc plan-error check), `experiments/QUEUE.md` (#3); literature Theme 7 Sec. 1 row R and Sec. 3 (residual feedback around a plan; age-indexed plans).
 
@@ -80,3 +80,4 @@ _Not started._
 ## Change log
 
 - 2026-10-30: initial draft. Scope (one combined arm), primary location (100k, k = 20) and no-plan handling (act unbounded) chosen by the author.
+- 2026-10-30: criteria approved by the author before any run; code, tests (59 pass), manifests (`scripts/exp0003_manifests.py`) and the analysis script (`scripts/exp0003_summarize.py`) written before any run.

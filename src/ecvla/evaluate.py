@@ -5,10 +5,13 @@ the policy acts at 20 Hz until success or MAX_STEPS (the common OpenVLA/openpi l
 action of each predicted chunk is executed. Inputs come from sensors.OnlineSensors, which builds them the same way
 as prepare.py. For `oracle-delayed`, object state is refreshed every k steps and arrives exactly k steps late.
 For `z-teacher`, the teacher policy (teacher.py) sees every observation; its output z is read every k steps and
-arrives exactly k steps late.
+arrives exactly k steps late. `track` students (EXP-0003) get the window of that plan due at its age.
+`--replay` (EXP-0003 reference arm, teacher runs only): the teacher alone executes step `age` of its latest
+delivered plan (same delay schedule); before the first plan arrives it executes its own current output.
 
 Usage: python -m ecvla.evaluate <run_dir> --suite libero_spatial --task 0 --out <result.json> [--k 1]
        python -m ecvla.evaluate <run_dir> --suite libero_spatial --task 0 1 ... 9 --k 1 10 --out-dir <dir>
+       python -m ecvla.evaluate <teacher_run> --replay --suite ... --task ... --k 20 --out-dir <teacher_run>/eval_replay
          (all tasks x k in one process; writes <dir>/<suite>_t<task>_k<k|->.json, skipping finished ones)
 """
 
@@ -22,7 +25,7 @@ import numpy as np
 import torch
 
 from ecvla.libero_env import make_env
-from ecvla.policy import FastPolicy, PolicyConfig
+from ecvla.policy import FastPolicy, PolicyConfig, plan_window
 from ecvla.replay import SubstepLogger, object_names
 from ecvla.sensors import NOOP_ACTION, OnlineSensors
 from ecvla.train import state_source, task_key
@@ -100,20 +103,55 @@ class Runner:
             self.online_teacher.observe(obs)
             z = np.zeros(self.cfg.latent_dim, np.float32)
             if self.src[self.t] >= 0:
-                z = self.norm("latent", self.online_teacher.history[self.src[self.t]])
+                plan = self.online_teacher.history[self.src[self.t]]
+                if self.cfg.track:
+                    z = plan_window(torch.as_tensor(plan, dtype=torch.float32),
+                                    torch.tensor(self.t - self.src[self.t]), self.cfg.chunk).numpy()
+                else:
+                    z = self.norm("latent", plan)
                 avail, age = True, self.age[self.t]
             b["latent"] = step(z)
         b.update(obj_pose=step(self.norm("obj_pose", pose)), contact=step(contact),
                  fix_state=step(fix), state_avail=torch.tensor([[avail]], device=self.device), age=step(age))
         f, self.state = self.model.features(b, self.state)
-        chunk = self.model.act(f, self.gen)[0, 0].cpu().numpy()
+        chunk = self.model.act(f, self.gen, b)[0, 0].cpu().numpy()
         self.t += 1
         m, s = self.stats["actions"]
         return chunk[0] * s + m
 
 
+class ReplayRunner:
+    """EXP-0003 reference arm: the teacher executes its own delayed plan, no student. Step t uses chunk step
+    (t - src) of the plan made at src, clamped to the chunk; before the first plan, its own current output."""
+
+    def __init__(self, teacher, task: str):
+        from ecvla.teacher import OnlineTeacher
+
+        self.teacher, self.task, self.OnlineTeacher = teacher, task, OnlineTeacher
+        self.condition = "replay"
+        self.cfg = teacher.model.cfg
+
+    def reset(self, horizon: int, rng: np.random.Generator, k: int | None, teacher=None):
+        self.online = self.OnlineTeacher(self.teacher, self.task, "chunk")
+        self.src, _ = state_source(horizon, "z-teacher", rng, k=k, train=False)
+        self.t = 0
+
+    @torch.no_grad()
+    def act(self, obs: dict, vision=None) -> np.ndarray:
+        self.online.observe(obs)
+        H = self.cfg.chunk
+        src = self.src[self.t]
+        if src >= 0:
+            a = self.online.history[src].reshape(H, -1)[min(self.t - src, H - 1)]
+        else:
+            a = self.online.history[self.t].reshape(H, -1)[0]
+        self.t += 1
+        m, s = self.teacher.stats["actions"]
+        return a * s + m
+
+
 def evaluate(run_dir: str, suite: str, task_id: int, out: str, k: int | None = None, episodes: int = 50,
-             seed: int = 0) -> dict:
+             seed: int = 0, replay: bool = False) -> dict:
     out = Path(out)
     if out.exists():
         print(f"skip: {out} exists")
@@ -126,7 +164,12 @@ def evaluate(run_dir: str, suite: str, task_id: int, out: str, k: int | None = N
     bddl = os.path.join(get_libero_path("bddl_files"), task.problem_folder, task.bddl_file)
     key = Path(bddl).stem
     runner = Runner(ckpt, key)
-    if runner.condition in ("oracle-delayed", "z-teacher"):
+    if replay:
+        from ecvla.teacher import Teacher
+
+        assert ckpt["info"]["condition"] == "task-id", "--replay takes a teacher (blind task-id) run"
+        runner = ReplayRunner(Teacher(run_dir), key)
+    if runner.condition in ("oracle-delayed", "z-teacher", "replay"):
         assert k is not None, f"{runner.condition} needs --k"
     teacher = None
     if runner.condition == "z-teacher":
@@ -153,7 +196,7 @@ def evaluate(run_dir: str, suite: str, task_id: int, out: str, k: int | None = N
         objs = object_names(obs)
         assert objs == ckpt["objects"][key], (objs, ckpt["objects"][key])
         sensors = OnlineSensors(env, logger, objs)
-        if runner.cfg.fixtures:  # models without fixture tokens (no fixture data) ignore the scene's fixtures
+        if not replay and runner.cfg.fixtures:  # models without fixture tokens (no fixture data) ignore the scene's fixtures
             assert sensors.fixtures == ckpt["fixtures"][key], (sensors.fixtures, ckpt["fixtures"][key])
         logger.take()
         runner.reset(horizon, rng, k, teacher)
@@ -171,6 +214,7 @@ def evaluate(run_dir: str, suite: str, task_id: int, out: str, k: int | None = N
     env.close()
     res = {
         "run": str(run_dir), "suite": suite, "task_id": task_id, "task": key, "condition": runner.condition,
+        "replay": replay,
         "k": k, "episodes": len(results), "success_rate": float(np.mean([r["success"] for r in results])),
         "per_episode": results, "seconds": round(time.time() - t0, 1), "info": ckpt["info"],
     }
@@ -190,16 +234,17 @@ def main():
     ap.add_argument("--out-dir", help="result directory (any number of tasks and k)")
     ap.add_argument("--episodes", type=int, default=50)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--replay", action="store_true", help="EXP-0003 reference arm: teacher executes its delayed plan")
     a = ap.parse_args()
     ks = a.k or [None]
     if a.out:
         assert len(a.task) == 1 and len(ks) == 1, "--out takes one task and one k; use --out-dir"
-        evaluate(a.run_dir, a.suite, a.task[0], a.out, ks[0], a.episodes, a.seed)
+        evaluate(a.run_dir, a.suite, a.task[0], a.out, ks[0], a.episodes, a.seed, a.replay)
         return
     for task in a.task:
         for k in ks:
             out = Path(a.out_dir) / f"{a.suite}_t{task}_k{k if k is not None else '-'}.json"
-            evaluate(a.run_dir, a.suite, task, str(out), k, a.episodes, a.seed)
+            evaluate(a.run_dir, a.suite, task, str(out), k, a.episodes, a.seed, a.replay)
 
 
 if __name__ == "__main__":

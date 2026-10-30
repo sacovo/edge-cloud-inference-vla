@@ -122,3 +122,56 @@ def test_long_chunk_teacher_gives_wide_latents(data_dir, tmp_path):
     precompute(str(teacher_dir), str(data_dir / "libero_fake"), str(tmp_path / "z/libero_fake"))
     z = np.load(tmp_path / "z/libero_fake/a_demo.npz")["z_chunk"]
     assert z.shape == (np.load(data_dir / "libero_fake/a_demo.npz")["ep_start"][-1], 280)
+
+
+def test_track_student_trains_on_the_aligned_window_and_runs_closed_loop(data_dir, tmp_path):
+    """EXP-0003: a `track` student on a 40-step teacher's plan gets the 8-step window due at its age (training and
+    closed loop), starts as the plan, and the replay runner executes plan step `age`."""
+    from ecvla.evaluate import ReplayRunner, Runner
+    from ecvla.policy import plan_window
+    from ecvla.teacher import Teacher, precompute
+    from ecvla.train import Batcher
+
+    common = ["--data", str(data_dir), "--suites", "libero_fake", "--batch", "4", "--log-every", "20",
+              "--val-per-task", "1", "--device", "cpu"]
+    teacher_dir = tmp_path / "teacher40"
+    train(parser().parse_args(common + ["--steps", "20", "--condition", "task-id", "--size", "20000", "--chunk", "40",
+                                        "--out", str(teacher_dir)]))
+    precompute(str(teacher_dir), str(data_dir / "libero_fake"), str(tmp_path / "z/libero_fake"))
+
+    data = EpisodeData(data_dir, ["libero_fake"], val_per_task=1, latent_dir=tmp_path / "z")
+    stats = {k: v for k, v in data.norm_stats().items() if k != "latent"}
+    bt = Batcher(data, stats, "z-teacher", torch.device("cpu"), 8, track=True)
+    ep = data.split(False)[:2]
+    b, _, _ = bt(ep, np.random.default_rng(0))
+    assert b["latent"].shape[-1] == 56
+    i, t = 1, 25  # check one step against a direct gather from the stored rows
+    age = int(round(float(b["age"][i, t]) * 20))
+    src = ep[i][0] + t - age
+    want = plan_window(torch.from_numpy(data.rows["latent"][src]), torch.tensor(age), 8)
+    torch.testing.assert_close(b["latent"][i, t], want)
+
+    student = tmp_path / "student"
+    train(parser().parse_args(common + ["--steps", "40", "--condition", "z-teacher", "--size", "10000", "--track",
+                                        "--out", str(student), "--latent-dir", str(tmp_path / "z"),
+                                        "--teacher", str(teacher_dir)]))
+    ckpt = torch.load(student / "model.pt", weights_only=False)
+    pol = ckpt["info"]["policy"]
+    assert pol["track"] and pol["latent_dim"] == 56 and pol["track_bound"][6] == 0 and "latent" not in ckpt["stats"]
+
+    obs = {"proprio": np.zeros(PROPRIO_DIM), "torque": np.zeros(TORQUE_DIM), "ft": np.zeros(FT_DIM), "fast_valid": 0.0,
+           "obj_pose": np.zeros((3, 7)), "contact": np.zeros(3), "fix_state": np.zeros((2, 2))}
+    teacher = Teacher(teacher_dir)
+    r = Runner(ckpt, "b")
+    r.reset(40, np.random.default_rng(0), k=20, teacher=teacher)
+    for _ in range(25):
+        a = r.act(obs)
+    assert np.isfinite(a).all() and r.src[24] == 0
+
+    rep = ReplayRunner(teacher, "b")
+    rep.reset(40, np.random.default_rng(0), k=20)
+    acts = [rep.act(obs) for _ in range(25)]
+    m, s = teacher.stats["actions"]
+    plan0 = rep.online.history[0].reshape(40, 7)
+    np.testing.assert_allclose(acts[24], plan0[24] * s + m, rtol=1e-5)  # step 24 executes plan(0)[age 24]
+    np.testing.assert_allclose(acts[5], rep.online.history[5].reshape(40, 7)[0] * s + m, rtol=1e-5)  # no plan yet

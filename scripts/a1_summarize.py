@@ -1,7 +1,7 @@
 """Aggregate A1 closed-loop results: <runs_dir>/<suite>/<run>/eval/<suite>_t<task>_k<k>.json -> one row per run and k.
 
 Success rate is the mean over tasks (50 episodes each); incomplete runs (fewer than 10 tasks) are flagged.
-Usage: python3 scripts/a1_summarize.py <runs_dir> [--out summary.json]
+Usage: python3 scripts/a1_summarize.py <runs_dir> [--out summary.json] [--eval-dir eval_replay]
 """
 
 import argparse
@@ -14,9 +14,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("runs_dir")
     ap.add_argument("--out")
+    ap.add_argument("--eval-dir", default="eval", help="result subdirectory of each run (EXP-0003 replay: eval_replay)")
     a = ap.parse_args()
     groups = defaultdict(list)
-    for f in sorted(Path(a.runs_dir).glob("*/*/eval/*.json")):
+    for f in sorted(Path(a.runs_dir).glob(f"*/*/{a.eval_dir}/*.json")):
         r = json.loads(f.read_text())
         groups[(f.parts[-4], f.parts[-3], r["k"])].append(r)
     rows = []

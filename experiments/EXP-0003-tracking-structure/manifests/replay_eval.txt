@@ -1,0 +1,6 @@
+$ECVLA_SCRATCH/exp0002/runs/teachers/libero_spatial/task-id_10M_h40_s0 libero_spatial 1,4,10,20 --replay --out-dir $ECVLA_SCRATCH/exp0002/runs/teachers/libero_spatial/task-id_10M_h40_s0/eval_replay
+$ECVLA_SCRATCH/exp0002/runs/teachers/libero_spatial/task-id_10M_h40_s1 libero_spatial 1,4,10,20 --replay --out-dir $ECVLA_SCRATCH/exp0002/runs/teachers/libero_spatial/task-id_10M_h40_s1/eval_replay
+$ECVLA_SCRATCH/exp0002/runs/teachers/libero_spatial/task-id_10M_h40_s2 libero_spatial 1,4,10,20 --replay --out-dir $ECVLA_SCRATCH/exp0002/runs/teachers/libero_spatial/task-id_10M_h40_s2/eval_replay
+$ECVLA_SCRATCH/exp0002/runs/teachers/libero_object/task-id_10M_h40_s0 libero_object 1,4,10,20 --replay --out-dir $ECVLA_SCRATCH/exp0002/runs/teachers/libero_object/task-id_10M_h40_s0/eval_replay
+$ECVLA_SCRATCH/exp0002/runs/teachers/libero_object/task-id_10M_h40_s1 libero_object 1,4,10,20 --replay --out-dir $ECVLA_SCRATCH/exp0002/runs/teachers/libero_object/task-id_10M_h40_s1/eval_replay
+$ECVLA_SCRATCH/exp0002/runs/teachers/libero_object/task-id_10M_h40_s2 libero_object 1,4,10,20 --replay --out-dir $ECVLA_SCRATCH/exp0002/runs/teachers/libero_object/task-id_10M_h40_s2/eval_replay

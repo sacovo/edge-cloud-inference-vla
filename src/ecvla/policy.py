@@ -49,12 +49,18 @@ class PolicyConfig:
     fixtures: bool = False  # fixture-joint tokens (state conditions in scenes with drawers / knobs)
     latent_dim: int = 0  # z size for latent conditions (its age is always appended)
     chunk: int = CHUNK  # predicted action-chunk length
+    track: bool = False  # EXP-0003: z is the age-aligned plan window; output = plan + bounded residual
+    track_bound: tuple = ()  # per action dim, normalized units; 0 = unbounded (EXP-0003: gripper)
     core: str = "gru"  # gru | tf
     head: str = "l1"  # l1 | flow
 
     def __post_init__(self):
         assert self.cond in COND_KINDS, self.cond
         assert self.core in ("gru", "tf") and self.head in ("l1", "flow"), (self.core, self.head)
+        if self.track:
+            assert self.cond == "latent" and self.head == "l1" and self.latent_dim == self.chunk * ACT_DIM
+            assert len(self.track_bound) == ACT_DIM
+            self.track_bound = tuple(float(x) for x in self.track_bound)
 
     @property
     def heads(self) -> int:
@@ -160,6 +166,10 @@ class FastPolicy(nn.Module):
         else:
             self.core = TransformerCore(d, cfg.layers, cfg.heads)
         self.head = nn.Linear(d, cfg.chunk * ACT_DIM) if cfg.head == "l1" else FlowHead(d, cfg.chunk)
+        if cfg.track:  # residual starts at zero: a fresh plan is executed as is
+            nn.init.zeros_(self.head.weight)
+            nn.init.zeros_(self.head.bias)
+            self.register_buffer("bound", torch.tensor(cfg.track_bound), persistent=False)
 
     def head_params(self) -> int:
         return sum(p.numel() for n, p in self.named_parameters() if not n.startswith("vis_proj"))
@@ -220,18 +230,38 @@ class FastPolicy(nn.Module):
         att = att.masked_fill(~mask[:, :, None, :], float("-inf")).softmax(-1)
         return self.o(torch.einsum("bthn,btnhc->bthc", att, v).reshape(B, T, d))
 
-    def loss(self, f: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+    def track_out(self, r: torch.Tensor, b: dict) -> torch.Tensor:
+        """EXP-0003: plan window (b["latent"], normalized action units) + residual, bounded per dim as
+        bound * tanh(r / bound) (0 = unbounded). Before the first plan arrives: the raw residual, no base."""
+        bound = self.bound.to(r.dtype)
+        rb = torch.where(bound > 0, bound * torch.tanh(r / bound.clamp_min(1e-6)), r)
+        base = b["latent"].view_as(r).to(r.dtype)
+        return torch.where(b["state_avail"][..., None, None], base + rb, r)
+
+    def loss(self, f: torch.Tensor, target: torch.Tensor, b: dict | None = None) -> torch.Tensor:
         """Per-element loss (B, T, chunk, 7) on normalized actions; the caller masks and averages."""
         if self.cfg.head == "l1":
-            return (self.head(f).view_as(target) - target).abs()
+            out = self.head(f).view_as(target)
+            return ((self.track_out(out, b) if self.cfg.track else out) - target).abs()
         return self.head.loss(f, target)
 
     @torch.no_grad()
-    def act(self, f: torch.Tensor, generator=None) -> torch.Tensor:
-        """Normalized action chunk (B, T, chunk, 7)."""
+    def act(self, f: torch.Tensor, generator=None, b: dict | None = None) -> torch.Tensor:
+        """Normalized action chunk (B, T, chunk, 7). `track` models need the batch b (plan window, availability)."""
         if self.cfg.head == "l1":
-            return self.head(f).view(*f.shape[:-1], self.cfg.chunk, ACT_DIM)
+            out = self.head(f).view(*f.shape[:-1], self.cfg.chunk, ACT_DIM)
+            return self.track_out(out, b) if self.cfg.track else out
         return self.head.sample(f, generator)
+
+
+def plan_window(z: torch.Tensor, age_steps: torch.Tensor, window: int) -> torch.Tensor:
+    """EXP-0003: steps age .. age + window - 1 of a flattened plan z (..., H * 7), clamped to its last step.
+
+    z: (..., H*7); age_steps: (...) integer steps since the plan was made. Returns (..., window * 7)."""
+    H = z.shape[-1] // ACT_DIM
+    j = (age_steps.long()[..., None] + torch.arange(window, device=z.device)).clamp(0, H - 1)  # (..., window)
+    plan = z.view(*z.shape[:-1], H, ACT_DIM)
+    return torch.gather(plan, -2, j[..., None].expand(*j.shape, ACT_DIM)).flatten(-2)
 
 
 def count_head_params(cfg: PolicyConfig) -> int:

@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 import torch
 
-from ecvla.policy import FastPolicy, PolicyConfig, WINDOW, config_for_size, count_head_params
+from ecvla.policy import FastPolicy, PolicyConfig, WINDOW, config_for_size, count_head_params, plan_window
 from ecvla.sensors import FT_DIM, PROPRIO_DIM, TORQUE_DIM
 from ecvla.train import state_source
 
@@ -126,3 +126,60 @@ def test_long_chunk_shapes_and_stepwise(head):
         f, _ = m.features(b)
         assert m.act(f).shape == (2, 12, 40, 7)
         assert m.loss(f, torch.zeros(2, 12, 40, 7)).shape == (2, 12, 40, 7)
+
+
+def test_track_off_keeps_exp0002_students_unchanged():
+    """EXP-0002's Spatial s0 students (280-d chunk z) logged 10,056 / 102,276 head params."""
+    for size, n in ((10_000, 10_056), (100_000, 102_276)):
+        cfg = config_for_size(size, cond="latent", n_tasks=10, n_names=9, latent_dim=280)
+        assert not cfg.track and count_head_params(cfg) == n
+
+
+def test_plan_window_aligns_and_pads_with_last_step():
+    z = torch.arange(40 * 7, dtype=torch.float32).view(1, 280)  # step j holds 7j .. 7j + 6
+    w = plan_window(z, torch.tensor([5]), 8).view(8, 7)
+    assert w[:, 0].tolist() == [7 * j for j in range(5, 13)]
+    w = plan_window(z, torch.tensor([36]), 8).view(8, 7)
+    assert w[:, 0].tolist() == [7 * j for j in (36, 37, 38, 39, 39, 39, 39, 39)]
+
+
+def track_model(bound=(0.5,) * 6 + (0.0,)):
+    torch.manual_seed(0)
+    cfg = PolicyConfig(d=32, layers=1, cond="latent", n_tasks=3, n_names=7, latent_dim=56, track=True,
+                       track_bound=bound)
+    return FastPolicy(cfg).eval()
+
+
+def test_track_starts_as_the_plan_and_bounds_the_arm_not_the_gripper():
+    m = track_model()
+    b = batch(T=6)
+    b["state_avail"][:, :2] = False  # no plan yet for the first two steps
+    with torch.no_grad():
+        f, _ = m.features(b)
+        a = m.act(f, b=b)
+        plan = b["latent"].view(2, 6, 8, 7)
+        torch.testing.assert_close(a[:, 2:], plan[:, 2:])  # zero residual: the plan, as is
+        assert (a[:, :2] == 0).all()  # no plan: raw residual, no base
+        m.head.bias.fill_(10.0)  # huge residual
+        a = m.act(f, b=b)
+        r = a[:, 2:] - plan[:, 2:]
+        assert (r[..., :6] <= 0.5 + 1e-5).all() and (r[..., 6] > 9).all()
+        assert (a[:, :2] > 9).all()  # unbounded before the first plan
+
+
+def test_track_stepwise_matches_sequence():
+    m = track_model()
+    with torch.no_grad():
+        m.head.weight.normal_(0, 0.1)
+    b = batch(T=10)
+    b["state_avail"][:, :3] = False
+    with torch.no_grad():
+        f, _ = m.features(b)
+        seq = m.act(f, b=b)
+        state, steps = None, []
+        for t in range(10):
+            per_ep = ("task", "obj_name", "obj_mask", "fix_name", "fix_mask")
+            bt = {k: (v if k in per_ep else v[:, t : t + 1]) for k, v in b.items()}
+            ft, state = m.features(bt, state)
+            steps.append(m.act(ft, b=bt))
+    torch.testing.assert_close(torch.cat(steps, 1), seq, atol=1e-5, rtol=1e-5)
