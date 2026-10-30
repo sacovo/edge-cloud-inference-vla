@@ -2,6 +2,12 @@
 
 Newest entries first. Each entry covers what was tried, the result, and what failed and why.
 
+## 2026-10-30: EXP-0002 post-hoc — the plan goes stale gradually, success falls off a cliff
+
+- The author suggested that k = 20 collapses because far plan steps no longer apply. Checked by teacher L1 per chunk step j on held-out demos (`scripts/exp0002_chunk_error.py`, job 122176, ~10 min on cpu-debug; j = 0 reproduces the logged val L1).
+- H40, pooled: 0.066 (j = 0), 0.088 (j 4–7), 0.100 (j 10–19, used at k = 10), 0.122 (j 20–39, used at k = 20). Position and gripper degrade most; rotation is flat. Persistence (repeat a_t) is 0.371 at j 20–39, so old steps are still informative.
+- Direction supports the author's view, magnitude does not explain the cliff on its own (+22% error vs 60.5% → 11.6% success). Open: closed-loop divergence (teacher-forced is a lower bound) or a grasp-precision threshold. Separating test: the teacher executing its own delayed plan at k = 20, without a student (candidate reference arm for queue #3; not added yet).
+
 ## 2026-10-30: EXP-0002 done — H1 supported: a 40-step plan rescues k = 10, not k = 20
 
 - **H1 supported as pre-registered** (100k, k = 10, Spatial + Object, 3 seeds): H40 student 60.5% vs H8 38.7%, **+21.8 pp** (seeds +24.2 / +13.5 / +27.8), **0.88** of its own teacher. Seed s1 alone is under 15 pp; the criterion is on the mean.

@@ -102,7 +102,22 @@ Pooled difference H40 − H8 (pp, per seed) and ratio to own teacher (H8 → H40
 - **100k students match or exceed their own (weaker) teacher at k ≤ 4** (ratio 1.08–1.13), and lose 7.6 pp against H8 at k = 4 (mostly Object, −11.9).
 - **The 10k student gets worse with the 280-d z** (k = 1: −19.6 pp, every seed lower; no gain at k = 10). Widths: 10k d 20 → 16, 100k d 84 → 76. Consistent with the §5/§6 risk that a wide z crowds out a 10k head (queue #6), but not separated from the weaker teacher.
 
+### Post-hoc (author's question, not gating): does the plan go stale with age?
+
+Teacher L1 per chunk step j on held-out demos (teacher-forced; same split and units as train.py's val L1, which j = 0 reproduces), pooled Spatial + Object, 3 seeds; at period k and delay k the student uses steps j = k .. 2k − 1. Persistence = predicting a_{t+j} = a_t. Script `scripts/exp0002_chunk_error.py`, data `results/chunk_error.json`.
+
+| Steps used | H40 teacher L1 | persistence L1 | 100k student success |
+|---|---|---|---|
+| j = 0 | 0.066 | 0 | |
+| k = 4: j 4–7 | 0.088 (H8: 0.073) | 0.117 | 74.1% (H8: 81.7%) |
+| k = 10: j 10–19 | 0.100 | 0.253 | 60.5% |
+| k = 20: j 20–39 | 0.122 | 0.371 | 11.6% |
+
+- The plan degrades with age (×1.85 from j = 0 to j 20–39; position 0.083 → 0.170, gripper 0.154 → 0.247, rotation ~flat), but gradually: +22% from the k = 10 to the k = 20 window, against a drop in success from 60.5% to 11.6%. Old steps still beat persistence 3×.
+- On demos, staleness alone is too gradual to explain the cliff. Not tested: closed-loop divergence (teacher-forcing makes this a lower bound) and a precision threshold (grasping may tolerate ~0.10 but not ~0.12). The separating test is the teacher executing its own delayed plan at k = 20 (no student).
+
 ## Change log
 
 - 2026-10-30: initial design; criteria approved by the author before any run.
 - 2026-10-30 (after the run, no criterion changed): debug runs and teachers ran as planned; teachers on `h200` (15–19 min each), students on CPU (16–38 min), evals ~30–45 min each. Students were submitted with a Slurm dependency on the latent array; evals via the cluster-side submitter. Deviation from §7's cost estimate only (evals faster than 1.5 h). No failed or crashed runs.
+- 2026-10-30 (after the result): added the post-hoc per-step plan-error analysis (author's question); not gating, no criterion changed.
