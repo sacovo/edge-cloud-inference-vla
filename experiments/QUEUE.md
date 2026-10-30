@@ -7,10 +7,13 @@ Background for all of them: EXP-0001 showed that a 100k fast policy reaches 84�
 | # | Experiment | Question | Status |
 |---|---|---|---|
 | 1 | EXP-0001 | Phase A on LIBERO: does a blind policy need scene state (A-test)? Can a small policy use a big policy's plan (H4)? | closed (Phase A) |
-| 2 | EXP-0002 plan horizon | Is the collapse at k ≥ 10 caused by the plan running out (8 steps) rather than by the small policy? | designed |
+| 2 | EXP-0002 plan horizon | Is the collapse at k ≥ 10 caused by the plan running out (8 steps) rather than by the small policy? | pre-registered |
 | 3 | Tracking structure | Do an age-aligned plan and a residual action head (bounded, per step) bring a 10k policy to ≥ 50% of the teacher? | queued |
 | 4 | Late arrivals | Under jittered, out-of-order delay: stale plan vs rewind-and-replay vs a small JEPA-style latent predictor that rolls z forward | queued |
 | 5 | Innovation trust | Under an injected grasp loss: trust in z set by its age vs by the force/torque innovation (and the latent innovation); then innovation-triggered re-query with a max-interval fallback | queued |
+| 6 | Latent compression | Does compressing z to a few dimensions stop it from overwhelming a 10k student and raise its success further? | queued (added by the author 2026-10-30) |
+
+**#6 notes (to design later):** in EXP-0001 the 10k student did well with the 56-d chunk latent (48% of the teacher) and failed with the 768-d hidden latent (≤ 20%); EXP-0002's 280-d chunk raises the same risk. At a fixed head budget, a wide z costs the student its own width. Options: a learned bottleneck on the slow side (projection or small autoencoder of the teacher's chunk or hidden state to d_z ∈ {2, 4, 8, 16, 32}, trained with the student or distilled), or a compact parametric plan (few B-spline/DCT coefficients, Theme 7). One variable: d_z, at fixed student size (10k), against the uncompressed z. A small z also cuts the bytes sent per update (P-remote).
 
 ## Later, independent of the chain
 

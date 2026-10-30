@@ -2,6 +2,13 @@
 
 Newest entries first. Each entry covers what was tried, the result, and what failed and why.
 
+## 2026-10-30: Session handoff — EXP-0002 pre-registered; latent compression queued
+
+- **EXP-0002 criteria approved by the author** before any run; status pre-registered. Next session starts its §7: debug runs (one H = 40 teacher for 200 steps on `debug`/`h200`, its latents, one student for 200 steps, a 2-episode eval), then 6 teachers, teacher evals, latents, 12 students, 48 evals. Manifests: `python3 scripts/exp0002_manifests.py` (paths under `$ECVLA_SCRATCH/exp0002`). Use the cluster-side submitter for evals.
+- **Queued #6 (author):** latent compression — compress z to a few dimensions so it does not overwhelm a 10k student (the 768-d hidden latent failed at 10k in EXP-0001; EXP-0002's chunk latent is 280-d).
+- **Still running on the cluster:** the last EXP-0001 blind-grid run (Goal 10M `oracle-fresh` s0, job 277004 on `h200`, 8 h limit) and the cluster-side submitter (job 121207, ends after submitting that run's eval). Not needed for any EXP-0001 criterion; when its eval lands, re-run `scripts/a1_summarize.py` on `runs/grid` and update `results/a1_grid_blind_summary.json`.
+- Not done yet: full-vision eval timing (the 200-step vision model exists at `$ECVLA_SCRATCH/a1_test/vis_spatial_tid_1M`).
+
 ## 2026-10-30: Work restructured into single-question experiments; EXP-0001 closed; EXP-0002 designed
 
 - The author asked to stagger the work: one question per experiment, each with its own result, combined at the end, instead of one large amendment. The 9-variant draft "A1-teacher v2" was retired (git 43cf56e) and split into `experiments/QUEUE.md` (plan horizon → tracking structure → late arrivals → innovation trust; VLM latents, state tasks and infrastructure as independent items).

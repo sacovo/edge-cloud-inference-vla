@@ -1,6 +1,6 @@
 # EXP-0002: Is the collapse at slow update rates the plan running out?
 
-- **Status:** designed, not started (2026-10-30)
+- **Status:** pre-registered (criteria approved by the author 2026-10-30); not started
 - **Platform:** LIBERO-Spatial and LIBERO-Object, blind fast policies, simulated delay (same setup as EXP-0001 A1-teacher)
 - **Related:** EXP-0001 §10 (H4 results), `experiments/QUEUE.md` (#2); literature Theme 7 Sec. 1 (plans that outlive the delay; DTC age-indexed plans).
 
@@ -72,4 +72,4 @@ _Not started._
 
 ## Change log
 
-- 2026-10-30: initial design.
+- 2026-10-30: initial design; criteria approved by the author before any run.
