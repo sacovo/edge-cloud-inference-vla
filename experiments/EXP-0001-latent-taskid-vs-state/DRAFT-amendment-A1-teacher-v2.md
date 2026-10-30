@@ -16,6 +16,7 @@
 | **P** | Rewind-and-replay: train with z applied at the frame it was computed from (delay 0, period k); at run time, when z from step s arrives at t, recompute the core from s to t with z in place, using buffered fast inputs | Out-of-sequence measurement update (re-filtering); netcode reconciliation | Training uses delay 0; the closed loop keeps a 2k-step input buffer |
 | **G-age** | Trust in z decays with age: attention bias −α·age on the z token (α learned per head) | Kalman gain with covariance growing between updates | One parameter per head |
 | **G-inn** | Trust in z follows the innovation: a forward head predicts the next step's torque and F/T windows from (aligned plan, proprio); the normalized prediction error (NIS-like, running over the last 3 steps) biases attention on z: −β·NIS | Innovation gating (χ² gate) | Forward head trained with an auxiliary loss on demo data (normal data only) |
+| **J** | Latent predictor (JEPA-style): a small network ẑ_t = f(z_s, actions and fast-sensor windows s..t) predicts the teacher's latent at the current step; the student acts on ẑ_t instead of the stale z_s. Trained on demo frames to regress the frozen teacher's hidden state at t (targets are fixed, so no collapse). When z_t arrives, ‖z_t − ẑ_t‖ (normalized) is a **latent innovation**, a second trust signal next to the force/torque one | Kalman predict step in latent space; Smith predictor on z; V-JEPA-style action-conditioned latent prediction | Predictor counted in the head budget; z = teacher hidden state (the chunk variant uses A instead) |
 | **E** | Event-triggered query: when NIS exceeds a threshold fixed on validation demos (99th percentile), query the slow model now instead of waiting for the next period; the result still arrives k steps late | Event-triggered estimation | Closed-loop only |
 
 ## Variants (ablation ladder, each adds one mechanism)
@@ -29,8 +30,11 @@
 | V4-age | 32 | ✓ | ✓ | ✓ | G-age | – |
 | V4-inn | 32 | ✓ | ✓ | ✓ | G-inn | – |
 | V5 | 32 | ✓ | ✓ | ✓ | G-inn | ✓ |
+| V3-J | 32 | ✓ | ✓ | – (J instead) | none | – |
+| V4-J | 32 | ✓ | ✓ | – (J instead) | G-inn + latent innovation | – |
 
 Students: blind, 10k and 100k, 3 seeds, Spatial + Object (Goal optional). z = action chunk. k ∈ {1, 4, 10, 20}.
+**Delay models:** every variant is evaluated with a fixed delay (= k) **and** a jittered delay (k − 1 + Uniform{0..⌈k/2⌉}, out-of-order arrival allowed). Reason: forward prediction helps under fixed delay but hurt under random delay in [wang2024addressing] (Theme 7, Sec. 2).
 
 ## Perturbation evaluation (eval-only, new)
 
@@ -45,15 +49,24 @@ The demos contain no recoveries, so absolute recovery rates will be low for ever
 | **H4b** staleness is the chunk, not the student | With a plan that covers the delay, a tiny student tolerates slower updates | V3 10k holds ≥ 50% of its teacher's success at k = 10 (Spatial + Object pooled), where V0 10k does not | V3 10k at k = 10 is within 10 pp of V0 10k at k = 10 |
 | **H4c** structure substitutes for size | Alignment + residual make the 10k student closer to the teacher | At k = 1, V2 10k − V0 10k ≥ 10 pp and the seed spread (max − min) of V2 10k is ≤ half that of V0 10k | V2 10k ≤ V0 10k |
 | **H4d** innovation beats age for trust | Under grasp loss, trust driven by the fast sensors helps; age alone cannot see the event | Under grasp loss at k = 10: V4-inn − V4-age ≥ 10 pp **and** unperturbed V4-inn ≥ V4-age − 3 pp | V4-inn ≤ V4-age under grasp loss |
+| **H4f** predict vs replay | Rolling z forward with a small latent predictor (J) is as good as rewind-and-replay (P) and better than a stale z | At k = 10 under jittered delay, Spatial + Object pooled, 10k head: V3-J ≥ V3 − 3 pp **and** V3-J − V2 ≥ 5 pp | V3-J < V2 under jittered delay |
 | **H4e** (exploratory) event-triggered queries | Re-querying on an innovation spike speeds recovery | Reported: V5 − V4-inn under grasp loss, and queries per episode | – |
 
 Replay (P) has no own hypothesis: V3 vs V2 is reported. P makes one student usable at any delay, which is the property P-onboard vs P-remote needs.
 
+## Inputs from the literature review (Theme 7, Sec. 3; proposals for the author)
+
+- R: bound the residual and apply it per step.
+- G-inn: set the threshold conformally on successful validation rollouts, and report the false-alarm rate on unperturbed episodes (instead of a fixed 99th percentile).
+- E: keep a max-interval fallback, and compare against fixed-rate refresh at an equal number of queries.
+- L: optionally a B-spline plan (BEAST) instead of a 32-step chunk, so one teacher serves any k.
+- J is pending the JEPA review slice (Theme 8), which will confirm or correct the V-JEPA background before this is pre-registered.
+
 ## Cost (estimate)
 
 - Teachers: 3 seeds × 2 suites × 10M GRU with H = 32 ≈ 6 GPU runs × ~20 min.
-- Students: 7 variants × 2 sizes × 3 seeds × 2 suites = 84 runs (CPU for 10k with 8-d inputs; GPU for the rest), ~25–40 min each.
-- Evals: 84 runs × 4 k = 336 jobs (~1.5 h each, CPU), plus grasp-loss evals for V3–V5 and the references at k ∈ {1, 10}: ~80 jobs.
+- Students: 9 variants × 2 sizes × 3 seeds × 2 suites = 108 runs (CPU for 10k with 8-d inputs; GPU for the rest), ~25–40 min each.
+- Evals: 108 runs × 4 k × 2 delay models = 864 run-level jobs (~1.5 h each, CPU), plus grasp-loss evals for V3–V5, V3-J, V4-J and the references at k ∈ {1, 10}: ~100 jobs. If that is too much, drop the jittered delay for V0–V2 (it matters most for P and J).
 
 ## Open choices for the author
 
