@@ -185,3 +185,10 @@ Added after the first EXP-0001 A1-teacher results; see `themes/07-learned-filter
 - **New gap G11: residual feedback around an ageing plan.** In every residual-policy paper the base action is fresh (Theme 7, Sec. 1); learned delay handling excludes out-of-order arrival and jitter, and explicit forward prediction hurts under random delay ([wang2024addressing] Sec. 5).
 - **Implication:** these gaps define the draft EXP-0001 amendment A1-teacher v2 (`experiments/EXP-0001-latent-taskid-vs-state/DRAFT-amendment-A1-teacher-v2.md`); Theme 7 Sec. 3 lists the changes the literature suggests.
 
+
+## 9. Addendum (2026-10-30): Theme 8, predictive latents (JEPA)
+
+See `themes/08-predictive-latents-jepa.md` (19 sources, verified).
+
+- **New gap G12: rolling a remote latent forward on the robot.** Small JEPA-style predictors run at our size and rate (~9K parameters, 100 Hz on a Jetson Orin NX: [rao2026skyjepa]), and a small latent model can run beside a slow VLA over ~1 s delay ([DREAM-Chunk], Theme 8), but none advances a delayed *remote* embedding to "now" with local actions and fast sensors, or gates a new z by the latent innovation.
+- **H0 nuance.** Predictive vision encoders recover continuous and future LIBERO state better than CLIP/SigLIP-style ones (Theme 8, [JEPA-VLA], [ALPS]), and symbolic task state is decodable inside OpenVLA ([ProbeOpenVLA]). Nobody has probed a VLA's transmitted latent for dynamic state; the [ALPS] protocol is a ready-made test for our z.

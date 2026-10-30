@@ -225,3 +225,27 @@ Rows are prefixed by slice: A = learned filters + delays, B = innovation gating 
 | C19 | Full-text reads: arXiv HTML (2605.15480, 2504.12428, 2511.00091, 2412.13630, 2407.16677, 2306.00286, 2501.09747, 2506.06072v3, 2311.01977, 2509.19301); ar5iv (1812.06298, 1812.03201, 2309.15462, 2006.05768, 1803.08287, 2005.05440) | WebFetch | Locators below |
 | C20 | PDF text (pdftotext) for 2309.15462, 2006.05768, 1812.06298 to check rate/staleness statements | curl + pdftotext | DTC deployment and optimizer-rate ablation; DDA async branches; RPL hook results |
 | C21 | ar5iv for MPD 2312.10008; arXiv HTML 2312.10008 | WebFetch | ar5iv conversion failed; arXiv HTML 404 → MPD not read, excluded |
+
+## 08-predictive-latents-jepa
+
+Search date: 2026-10-30.
+
+| # | Query / action | Tool | Useful hits |
+|---|---|---|---|
+| 1 | Read `literature/PROTOCOL.md`, Theme 7 (format), eprint list and titles of all `literature/bib/*.bib` | Bash/grep | Format reference; LAPA, UniVLA, Karamzade24, MinD already present |
+| 2 | arXiv API id_list (16 IDs): 2301.08243, 2404.08471, 2506.09985, 2307.12698, 2411.04983, 2007.05929, 2203.04955, 2310.16828, 2206.08332, 2502.11831, 2212.03319, 2401.08898, 2501.14622, 2502.14819, 2507.19468, 2412.03572 | Python urllib + arXiv API | All 16 resolved; titles and authors copied from the API |
+| 3 | "JEPA robot manipulation policy latent predictor arXiv 2025 2026 vision-language-action" | WebSearch (extended) | VLA-JEPA 2602.10098, V-JEPA Policy 2609.37250, JEPA-WAM 2608.09381, StageWAM 2608.10780, Demo-JEPA 2605.20811, TD-JEPA 2510.00739, JEPA Policy 2609.09630, PSG-JEPA 2608.06799 |
+| 4 | "probing V-JEPA versus CLIP SigLIP features physical state dynamics robot policy comparison arXiv" | WebSearch (extended) | JEPA-VLA 2602.11832, ALPS 2610.30120, V-JEPA 2.1 2603.14482, MotionJEPA 2609.23881, Delta-JEPA 2606.31232 |
+| 5 | "latent world model compensate observation delay roll forward stale embedding robot policy high-frequency lightweight predictor" | WebSearch (extended) | "LagComp" (ResearchGate only), RoboJEPA (arXiv 2610.10515), ContactGuard 2608.13438, DREAM-Chunk 2606.18589, LeWM (via blog) |
+| 6 | arXiv API id_list (15 IDs): 2610.10515, 2603.14482, 2602.11832, 2602.10098, 2609.37250, 2608.06799, 2610.30120, 2608.13438, 2606.18589, 2510.00739, 2609.09630, 2608.09381, 2608.10780, 2609.23881, 2606.31232 | arXiv API | All resolved. 2610.10515 is RoboJEPA, not LagComp. 2608.10780 is now titled "StageWAM" (v3) |
+| 7 | "LagComp Compensating Observation-to-Action Latency Through Latent Feature Forecasting arXiv" (3 query variants) | WebSearch | No arXiv / DOI / project page found → Unverified |
+| 8 | "LeWorldModel LeWM stable end-to-end JEPA world model from pixels arXiv" | WebSearch | arXiv 2603.19312 |
+| 9 | "distilled small latent dynamics model on-robot high frequency world model embedded Jetson latent prediction policy delay" | WebSearch | SkyJEPA 2606.23444, SmolWAM (NeurIPS 2026 virtual page; HF model card), Think-Like-a-WM 2609.24682, LaWAM 2606.15768, Koopman distillation 2605.24924 |
+| 10 | arXiv API: 2603.19312, 2606.23444, 2609.24682, 2606.15768 | arXiv API | All resolved |
+| 11 | OpenReview API and forum page for LeCun "A Path Towards Autonomous Machine Intelligence" (id BZ5a1r-kVsf) | curl, WebFetch | Blocked by OpenReview browser challenge (403 / verification page) → Unverified |
+| 12 | Full-text PDF download + pdftotext for 19 papers (all included arXiv papers) | curl/pdftotext | 19 full texts |
+| 13 | arXiv HTML of V-JEPA 2 (Table 2, Table 3, Sec. 3–4) | WebFetch, then cross-checked against pdftotext | V-JEPA 2-AC success rates, 4 fps, 16 s/action confirmed |
+| 14 | Venue checks: PMLR v267 index (DINO-WM); ICLR 2024 proceedings index (TD-MPC2, Ni et al.); mlanthology TMLR 2024 (V-JEPA); Crossref bibliographic (I-JEPA); iclr.cc virtual page via WebSearch (SPR) | curl + grep, Crossref API, WebSearch | DINO-WM = ICML 2025, PMLR 267:79115–79135. TD-MPC2, Ni24 = ICLR 2024. V-JEPA = TMLR 2024. **I-JEPA = CVPR 2023** (DOI 10.1109/cvpr52729.2023.01499, pp. 15619–15629); its arXiv comment says "ICCV", which is wrong. SPR = ICLR 2021 (spotlight) |
+| 15 | WebSearch for venues of LeWM, Garrido25 (intuitive physics), JEPA-VLA | WebSearch | No venue confirmed for any of them → treated as preprints |
+| 16 | "probing vision-language model hidden states for object position physical state robot manipulation VLA" | WebSearch | 2502.04558 (OpenVLA probing); arXiv API + HRILab page (lists "Proceedings of ICAD" 2025, not confirmed on a proceedings site) |
+| 17 | "asynchronous VLA latent prediction stale observation forecast latent features ... latency compensation 2026" | WebSearch | FutureRTC, Action ControlNet (already in bib), DEFLECT 2605.19294, Causal World Modeling 2601.21998 (not assessed) |
