@@ -1,6 +1,6 @@
 # EXP-0002: Is the collapse at slow update rates the plan running out?
 
-- **Status:** running (pre-registered 2026-10-30; debug runs passed, full runs started 2026-10-30)
+- **Status:** done (pre-registered 2026-10-30; all runs and evals 2026-10-30). H1 supported.
 - **Platform:** LIBERO-Spatial and LIBERO-Object, blind fast policies, simulated delay (same setup as EXP-0001 A1-teacher)
 - **Related:** EXP-0001 §10 (H4 results), `experiments/QUEUE.md` (#2); literature Theme 7 Sec. 1 (plans that outlive the delay; DTC age-indexed plans).
 
@@ -68,8 +68,41 @@ Reported, not gating:
 
 ## 8. Results
 
-_Not started._
+### H1 (primary, 100k, k = 10): **supported** (2026-10-30)
+
+Spatial + Object pooled, 3 seeds, 500 episodes per seed, suite and k: the H40 student reaches **60.5%** vs 38.7% for the H8 student (EXP-0001), **+21.8 pp** (per seed +24.2 / +13.5 / +27.8; bootstrap 95% CI over seeds 13.5–27.8), and **0.88** of its own teacher (per seed 0.80 / 0.89 / 0.95). Both parts of the criterion (≥ 50% of own teacher; ≥ 15 pp over H8) hold on the means, as pre-registered. One of three seeds (s1) is below 15 pp, so the CI's lower end is under the bar; with 3 seeds the bootstrap CI is essentially the seed range.
+
+Summary: `results/exp0002_summary.json` (from `scripts/exp0002_summarize.py`, committed before any run); inputs `results/teachers_h40.json`, `results/students_h40.json` (`scripts/a1_summarize.py`). H8 numbers are EXP-0001's (`a1_teacher_summary.json`, chunk latent; teachers from `a1_grid_blind_summary.json`).
+
+### Reported, not gating
+
+Success %, mean of 3 seeds (H8 → H40):
+
+| Suite | Teacher | 10k k=1 / 4 / 10 / 20 | 100k k=1 / 4 / 10 / 20 |
+|---|---|---|---|
+| Spatial | 75.9 → 56.7 | 31.1 → 17.8 / 33.4 → 34.5 / 7.6 → 9.9 / 1.0 → 4.6 | 64.1 → 70.3 / 68.7 → 65.5 / 27.4 → 59.7 / 5.9 → 15.3 |
+| Object | 97.3 → 81.1 | 51.7 → 25.8 / 55.0 → 52.6 / 2.4 → 1.9 / 0.1 → 0.2 | 92.3 → 85.0 / 94.7 → 82.8 / 49.9 → 61.3 / 5.1 → 8.0 |
+| Pooled | 86.6 → 68.9 | 41.4 → 21.8 / 44.2 → 43.6 / 5.0 → 5.9 / 0.5 → 2.4 | 78.2 → 77.6 / 81.7 → 74.1 / 38.7 → 60.5 / 5.5 → 11.6 |
+
+Pooled difference H40 − H8 (pp, per seed) and ratio to own teacher (H8 → H40):
+
+| Size | k | diff (seeds) | ratio |
+|---|---|---|---|
+| 10k | 1 | −19.6 (−16.8 / −13.3 / −28.7) | 0.48 → 0.32 |
+| 10k | 4 | −0.6 (−19.8 / +8.7 / +9.2) | 0.51 → 0.63 |
+| 10k | 10 | +0.9 (−1.2 / +6.1 / −2.1) | 0.06 → 0.09 |
+| 10k | 20 | +1.9 (+0.6 / +2.8 / +2.2) | 0.01 → 0.03 |
+| 100k | 1 | −0.6 (+2.7 / +1.1 / −5.5) | 0.90 → 1.13 |
+| 100k | 4 | −7.6 (−4.2 / −5.9 / −12.6) | 0.94 → 1.08 |
+| 100k | 10 | **+21.8** (+24.2 / +13.5 / +27.8) | 0.45 → **0.88** |
+| 100k | 20 | +6.1 (+9.5 / +4.8 / +4.1) | 0.06 → 0.17 |
+
+- **The H40 teacher is weaker** (pooled 68.9% vs 86.6%; every seed lower). Predicting 40 steps is a harder target, and at the 10M budget its width drops (d 768 → 704; 10.74M → 9.19M head params). Not separated here.
+- **k = 20 still collapses** (100k: 11.6%, 0.17 of the teacher) although the 40-step plan covers its oldest age (39). The plan running out explains most of the k = 10 drop, not the k = 20 one: a plan 20–39 steps old is not usable by this student even when it still covers the present (reader-inferred; open-loop drift over 1–2 s is the obvious candidate, not tested).
+- **100k students match or exceed their own (weaker) teacher at k ≤ 4** (ratio 1.08–1.13), and lose 7.6 pp against H8 at k = 4 (mostly Object, −11.9).
+- **The 10k student gets worse with the 280-d z** (k = 1: −19.6 pp, every seed lower; no gain at k = 10). Widths: 10k d 20 → 16, 100k d 84 → 76. Consistent with the §5/§6 risk that a wide z crowds out a 10k head (queue #6), but not separated from the weaker teacher.
 
 ## Change log
 
 - 2026-10-30: initial design; criteria approved by the author before any run.
+- 2026-10-30 (after the run, no criterion changed): debug runs and teachers ran as planned; teachers on `h200` (15–19 min each), students on CPU (16–38 min), evals ~30–45 min each. Students were submitted with a Slurm dependency on the latent array; evals via the cluster-side submitter. Deviation from §7's cost estimate only (evals faster than 1.5 h). No failed or crashed runs.

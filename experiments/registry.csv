@@ -1,3 +1,3 @@
 exp_id,created,title,hypotheses,status,git_sha,seeds,headline_result
 EXP-0001,2026-10-27,When does the remote latent have to carry state? (task-ID vs state crossover; blind fast policy),H1 crossover; H2 blind needs z-state; H3 staleness scales; H0 null,closed (Phase A),f729026,3,A-test fails (LIBERO needs no state); H4 not supported as pre-registered (10k ratio 0.48 vs 0.50 bar; +36.9 pp vs task-id)
-EXP-0002,2026-10-30,Plan horizon vs update period (does the k>=10 collapse come from the plan running out?),H1 horizon,running,b5a4613,3,
+EXP-0002,2026-10-30,Plan horizon vs update period (does the k>=10 collapse come from the plan running out?),H1 horizon,done,3225949,3,"H1 supported: 100k k=10 H40 60.5% vs H8 38.7% (+21.8 pp; 0.88 of own teacher); H40 teacher weaker (68.9 vs 86.6%); k=20 still collapses; 10k worse with 280-d z"

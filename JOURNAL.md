@@ -2,6 +2,15 @@
 
 Newest entries first. Each entry covers what was tried, the result, and what failed and why.
 
+## 2026-10-30: EXP-0002 done — H1 supported: a 40-step plan rescues k = 10, not k = 20
+
+- **H1 supported as pre-registered** (100k, k = 10, Spatial + Object, 3 seeds): H40 student 60.5% vs H8 38.7%, **+21.8 pp** (seeds +24.2 / +13.5 / +27.8), **0.88** of its own teacher. Seed s1 alone is under 15 pp; the criterion is on the mean.
+- **The H40 teacher is weaker:** 68.9% vs 86.6% pooled (Spatial 56.7 vs 75.9, Object 81.1 vs 97.3); 9.19M vs 10.74M params at the 10M budget. Its 100k students match or beat it at k ≤ 4 (ratio 1.08–1.13).
+- **k = 20 still collapses** (100k: 11.6%, ratio 0.17) although the plan covers age 39. The plan running out explains the k = 10 drop; the k = 20 one needs something else (a 1–2 s old plan is not usable open-loop; candidates are queue #3 tracking structure and #4 forward prediction).
+- **The 10k student is worse with the 280-d z** (k = 1: 21.8% vs 41.4%; d 20 → 16) and gains nothing at k = 10. Supports doing queue #6 (latent compression) before asking 10k questions again.
+- Ops: 6 teachers 15–19 min on h200; latents < 40 s; 12 students 16–38 min on CPU (submitted with `afterok` on the latent array; cross-cluster dependencies are impossible here, no federation); 48 evals ~30–45 min via the submitter (122009). No failures. Nodes calc-c-001..004 are reserved for another group (`aiub-prime`), so CPU jobs run on 005–007.
+- Results: `experiments/EXP-0002-plan-horizon/results/` (summary + inputs), README §8.
+
 ## 2026-10-30: EXP-0002 started — debug runs pass; 6 H = 40 teachers queued
 
 - **EXP-0001 leftover closed:** Goal 10M `oracle-fresh` s0 (job 277004, h200, 20 min) and its eval finished: 81.2% (s1/s2: 80.0/80.2%). `results/a1_grid_blind_summary.json` refreshed (one new row; the other 179 unchanged). Does not enter any EXP-0001 criterion.

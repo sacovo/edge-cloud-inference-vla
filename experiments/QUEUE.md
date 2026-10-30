@@ -7,7 +7,7 @@ Background for all of them: EXP-0001 showed that a 100k fast policy reaches 84�
 | # | Experiment | Question | Status |
 |---|---|---|---|
 | 1 | EXP-0001 | Phase A on LIBERO: does a blind policy need scene state (A-test)? Can a small policy use a big policy's plan (H4)? | closed (Phase A) |
-| 2 | EXP-0002 plan horizon | Is the collapse at k ≥ 10 caused by the plan running out (8 steps) rather than by the small policy? | pre-registered |
+| 2 | EXP-0002 plan horizon | Is the collapse at k ≥ 10 caused by the plan running out (8 steps) rather than by the small policy? | done: H1 supported (k = 10: +21.8 pp at 100k); k = 20 still collapses |
 | 3 | Tracking structure | Do an age-aligned plan and a residual action head (bounded, per step) bring a 10k policy to ≥ 50% of the teacher? | queued |
 | 4 | Late arrivals | Under jittered, out-of-order delay: stale plan vs rewind-and-replay vs a small JEPA-style latent predictor that rolls z forward | queued |
 | 5 | Innovation trust | Under an injected grasp loss: trust in z set by its age vs by the force/torque innovation (and the latent innovation); then innovation-triggered re-query with a max-interval fallback | queued |

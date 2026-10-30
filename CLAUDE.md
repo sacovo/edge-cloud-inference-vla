@@ -6,7 +6,8 @@ Research question: how small can the on-robot policy be when it is conditioned o
 - Phase 1 (done 2026-10-27): rapid scoping review. Start with `literature/SYNTHESIS.md`; protocol in `literature/PROTOCOL.md`. Themes 7 (learned filtering, Kalman-inspired mechanisms) and 8 (JEPA / predictive latents) were added 2026-10-29/30.
 - Phase 2: sim experiments, **one question per experiment**, in the order of `experiments/QUEUE.md`; results are combined at the end.
   - EXP-0001 closed after Phase A (results in its §10): LIBERO needs no scene state; a 100k student reaches 84–95% of a 10M teacher via its plan at k ≤ 4.
-  - **Next: EXP-0002 (plan horizon), pre-registered, not started.** Its §7 lists the run order; manifests via `python3 scripts/exp0002_manifests.py`.
+  - EXP-0002 done (results in its §8): a 40-step plan lifts the 100k student at k = 10 from 39% to 61% (H1 supported); k = 20 still collapses; the 10k student is worse with the 280-d z.
+  - **Next: queue #3 (tracking structure), not designed yet.** See `experiments/QUEUE.md`.
 
 ## Session start
 Read `JOURNAL.md` (latest entries first) before doing anything else.
