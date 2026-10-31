@@ -124,13 +124,13 @@ def test_long_chunk_teacher_gives_wide_latents(data_dir, tmp_path):
     assert z.shape == (np.load(data_dir / "libero_fake/a_demo.npz")["ep_start"][-1], 280)
 
 
-def test_track_student_trains_on_the_aligned_window_and_runs_closed_loop(data_dir, tmp_path):
-    """EXP-0003: a `track` student on a 40-step teacher's plan gets the 8-step window due at its age (training and
-    closed loop), starts as the plan, and the replay runner executes plan step `age`."""
-    from ecvla.evaluate import ReplayRunner, Runner
-    from ecvla.policy import plan_window
-    from ecvla.teacher import Teacher, precompute
-    from ecvla.train import Batcher
+TRACK_OBS = {"proprio": np.zeros(PROPRIO_DIM), "torque": np.zeros(TORQUE_DIM), "ft": np.zeros(FT_DIM),
+             "fast_valid": 0.0, "obj_pose": np.zeros((3, 7)), "contact": np.zeros(3), "fix_state": np.zeros((2, 2))}
+
+
+def train_track(data_dir, tmp_path, train_student=True):
+    """A 40-step teacher, its latents and (optionally) a `track` student on them; returns (common args, teacher dir)."""
+    from ecvla.teacher import precompute
 
     common = ["--data", str(data_dir), "--suites", "libero_fake", "--batch", "4", "--log-every", "20",
               "--val-per-task", "1", "--device", "cpu"]
@@ -138,6 +138,22 @@ def test_track_student_trains_on_the_aligned_window_and_runs_closed_loop(data_di
     train(parser().parse_args(common + ["--steps", "20", "--condition", "task-id", "--size", "20000", "--chunk", "40",
                                         "--out", str(teacher_dir)]))
     precompute(str(teacher_dir), str(data_dir / "libero_fake"), str(tmp_path / "z/libero_fake"))
+    if train_student:
+        train(parser().parse_args(common + ["--steps", "40", "--condition", "z-teacher", "--size", "10000", "--track",
+                                            "--out", str(tmp_path / "student"), "--latent-dir", str(tmp_path / "z"),
+                                            "--teacher", str(teacher_dir)]))
+    return common, teacher_dir
+
+
+def test_track_student_trains_on_the_aligned_window_and_runs_closed_loop(data_dir, tmp_path):
+    """EXP-0003: a `track` student on a 40-step teacher's plan gets the 8-step window due at its age (training and
+    closed loop), starts as the plan, and the replay runner executes plan step `age`."""
+    from ecvla.evaluate import ReplayRunner, Runner
+    from ecvla.policy import plan_window
+    from ecvla.teacher import Teacher
+    from ecvla.train import Batcher
+
+    common, teacher_dir = train_track(data_dir, tmp_path, train_student=False)
 
     data = EpisodeData(data_dir, ["libero_fake"], val_per_task=1, latent_dir=tmp_path / "z")
     stats = {k: v for k, v in data.norm_stats().items() if k != "latent"}
@@ -159,8 +175,7 @@ def test_track_student_trains_on_the_aligned_window_and_runs_closed_loop(data_di
     pol = ckpt["info"]["policy"]
     assert pol["track"] and pol["latent_dim"] == 56 and pol["track_bound"][6] == 0 and "latent" not in ckpt["stats"]
 
-    obs = {"proprio": np.zeros(PROPRIO_DIM), "torque": np.zeros(TORQUE_DIM), "ft": np.zeros(FT_DIM), "fast_valid": 0.0,
-           "obj_pose": np.zeros((3, 7)), "contact": np.zeros(3), "fix_state": np.zeros((2, 2))}
+    obs = TRACK_OBS
     teacher = Teacher(teacher_dir)
     r = Runner(ckpt, "b")
     r.reset(40, np.random.default_rng(0), k=20, teacher=teacher)
@@ -184,3 +199,46 @@ def test_track_student_trains_on_the_aligned_window_and_runs_closed_loop(data_di
     student = [r.act(obs) for _ in range(40)]
     np.testing.assert_allclose(np.array(student[20:]), np.array(acts[20:] + [rep.act(obs) for _ in range(15)]),
                                rtol=1e-5, atol=1e-6)
+
+
+def test_hold_start_uses_the_first_plan_fresh_and_logs_the_executed_residual(data_dir, tmp_path):
+    """EXP-0004: with --hold-start, steps before the first plan use the plan from step 0 at age t (later steps keep
+    the EXP-0003 schedule); a zero-residual student then equals replay from step 0; the logged residual is the one
+    executed."""
+    from ecvla.evaluate import ReplayRunner, Runner, hold_start, residual_summary
+    from ecvla.latency import DelayModel, schedule
+    from ecvla.policy import plan_window
+    from ecvla.teacher import Teacher
+
+    raw = schedule(60, period=20, delay=DelayModel(base=20), rng=np.random.default_rng(0)).src
+    src, age = hold_start(raw)
+    assert (raw[:20] == -1).all() and (src[:20] == 0).all() and (src[20:] == raw[20:]).all()
+    np.testing.assert_allclose(age * 20, np.arange(60) - src)
+
+    _, teacher_dir = train_track(data_dir, tmp_path)
+    teacher = Teacher(teacher_dir)
+    ckpt = torch.load(tmp_path / "student/model.pt", weights_only=False)
+    r = Runner(ckpt, "b")
+    r.reset(60, np.random.default_rng(0), k=20, teacher=teacher)
+    [r.act(TRACK_OBS) for _ in range(5)]
+    assert (r.src[:20] == -1).all() and r.res_log == []  # off: unchanged schedule, nothing logged without a plan
+
+    r.reset(60, np.random.default_rng(0), k=20, teacher=teacher, hold=True)
+    acts = [r.act(TRACK_OBS) for _ in range(30)]
+    assert len(r.res_log) == 30 and r.res_log[0][0] == 0
+    m, s = (np.asarray(x) for x in ckpt["stats"]["actions"])
+    for t in (3, 25):  # logged |r_b| = executed action - plan window step 0, on the arm dims
+        base = plan_window(torch.as_tensor(r.online_teacher.history[r.src[t]], dtype=torch.float32),
+                           torch.tensor(t - r.src[t]), 8).numpy().reshape(8, 7)[0]
+        np.testing.assert_allclose(np.array(r.res_log[t][1:7]) * np.array(ckpt["info"]["policy"]["track_bound"][:6]),
+                                   np.abs((acts[t] - m) / s - base)[:6], rtol=1e-4, atol=1e-5)
+    summ = residual_summary(r.res_log, 0.5)
+    assert summ["n"] == 30 and len(summ["pos_abs_mean_per_window"]) == 1 and 0 <= summ["pos_frac_at_95"] <= 1
+
+    sd = {k: (torch.zeros_like(v) if k.startswith("head.") else v) for k, v in ckpt["state_dict"].items()}
+    z = Runner(dict(ckpt, state_dict=sd), "b")
+    z.reset(60, np.random.default_rng(0), k=20, teacher=teacher, hold=True)
+    rep = ReplayRunner(teacher, "b")
+    rep.reset(60, np.random.default_rng(0), k=20, hold=True)
+    np.testing.assert_allclose(np.array([z.act(TRACK_OBS) for _ in range(60)]),
+                               np.array([rep.act(TRACK_OBS) for _ in range(60)]), rtol=1e-5, atol=1e-6)

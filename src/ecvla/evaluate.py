@@ -8,6 +8,10 @@ For `z-teacher`, the teacher policy (teacher.py) sees every observation; its out
 arrives exactly k steps late. `track` students (EXP-0003) get the window of that plan due at its age.
 `--replay` (EXP-0003 reference arm, teacher runs only): the teacher alone executes step `age` of its latest
 delivered plan (same delay schedule); before the first plan arrives it executes its own current output.
+`--hold-start` (EXP-0004): the robot holds still until the first plan arrives, with the hold not counted against the
+step budget. After the settle steps the scene is static, so this equals the first plan (made from the first
+observation) being available from step 0 at age 0: steps without a plan use the plan from step 0. `track` students
+also log their executed residual per step; each episode's result carries a summary (`residual`).
 
 Usage: python -m ecvla.evaluate <run_dir> --suite libero_spatial --task 0 --out <result.json> [--k 1]
        python -m ecvla.evaluate <run_dir> --suite libero_spatial --task 0 1 ... 9 --k 1 10 --out-dir <dir>
@@ -28,10 +32,32 @@ from ecvla.libero_env import make_env
 from ecvla.policy import FastPolicy, PolicyConfig, plan_window
 from ecvla.replay import SubstepLogger, object_names
 from ecvla.sensors import NOOP_ACTION, OnlineSensors
-from ecvla.train import state_source, task_key
+from ecvla.train import CONTROL_HZ, state_source, task_key
 
 MAX_STEPS = {"libero_spatial": 220, "libero_object": 280, "libero_goal": 300, "libero_10": 520}
 SETTLE_STEPS = 10
+RES_WINDOW = 40  # steps per window in the residual summary
+
+
+def hold_start(src: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """EXP-0004: (src, age_seconds) with steps before the first plan using the plan from step 0 (fresh at t = 0)."""
+    src = np.where(src >= 0, src, 0)
+    return src, ((np.arange(len(src)) - src) / CONTROL_HZ).astype(np.float32)
+
+
+def residual_summary(log: list, bound_raw: float) -> dict | None:
+    """Per-episode summary of logged residuals: rows (t, |r_b|/bound on 6 arm dims, |r| gripper raw)."""
+    if not log:
+        return None
+    a = np.array(log)
+    t, u, grip = a[:, 0], a[:, 1:7], a[:, 7]
+    raw = u * bound_raw
+    win = [float(raw[(t >= w) & (t < w + RES_WINDOW), :3].mean()) for w in range(0, int(t.max()) + 1, RES_WINDOW)
+           if ((t >= w) & (t < w + RES_WINDOW)).any()]
+    return {"n": len(a), "pos_abs_mean": float(raw[:, :3].mean()), "pos_abs_p95": float(np.quantile(raw[:, :3], 0.95)),
+            "rot_abs_mean": float(raw[:, 3:].mean()), "grip_abs_mean": float(grip.mean()),
+            "pos_frac_at_95": float((u[:, :3] >= 0.95).mean()), "pos_frac_at_50": float((u[:, :3] >= 0.5).mean()),
+            "any_arm_dim_at_95": float((u >= 0.95).any(1).mean()), "pos_abs_mean_per_window": win}
 
 
 class Runner:
@@ -47,6 +73,7 @@ class Runner:
         self.latent_kind = info["args"].get("latent_kind", "chunk")
         self.stats = {k: (np.asarray(m, np.float32), np.asarray(s, np.float32)) for k, (m, s) in ckpt["stats"].items()}
         self.device = device
+        self.bound_raw = info["args"].get("track_bound", 0.0)
         ti = ckpt["tasks"].index(task)
         objs = ckpt["objects"][task]
         S = ckpt["max_obj"]
@@ -69,8 +96,8 @@ class Runner:
         m, s = self.stats[k]
         return (x - m) / s
 
-    def reset(self, horizon: int, rng: np.random.Generator, k: int | None, teacher=None):
-        self.state, self.history, self.t = None, [], 0
+    def reset(self, horizon: int, rng: np.random.Generator, k: int | None, teacher=None, hold: bool = False):
+        self.state, self.history, self.t, self.res_log = None, [], 0, []
         self.online_teacher = None
         if self.condition == "z-teacher":
             from ecvla.teacher import OnlineTeacher
@@ -78,6 +105,8 @@ class Runner:
             self.online_teacher = OnlineTeacher(teacher, self.task, self.latent_kind)
         if self.condition not in ("none", "task-id"):
             self.src, self.age = state_source(horizon, self.condition, rng, k=k, train=False)
+            if hold:
+                self.src, self.age = hold_start(self.src)
         self.gen = torch.Generator(device=self.device).manual_seed(int(rng.integers(2**31)))
 
     @torch.no_grad()
@@ -115,9 +144,17 @@ class Runner:
                  fix_state=step(fix), state_avail=torch.tensor([[avail]], device=self.device), age=step(age))
         f, self.state = self.model.features(b, self.state)
         chunk = self.model.act(f, self.gen, b)[0, 0].cpu().numpy()
-        self.t += 1
         m, s = self.stats["actions"]
+        if self.cfg.track and avail:  # EXP-0004: log the executed step's residual (actions unchanged)
+            r = self.model.head(f)[0, 0].view(self.cfg.chunk, -1)[0]
+            bound = self.model.bound
+            rb = (bound * torch.tanh(r / bound.clamp_min(1e-6)))[:6] / bound[:6]
+            self.res_log.append([self.t, *rb.abs().cpu().tolist(), abs(float(r[6])) * float(s[6])])
+        self.t += 1
         return chunk[0] * s + m
+
+    def residual_summary(self) -> dict | None:
+        return residual_summary(self.res_log, self.bound_raw) if self.cfg.track else None
 
 
 class ReplayRunner:
@@ -131,9 +168,11 @@ class ReplayRunner:
         self.condition = "replay"
         self.cfg = teacher.model.cfg
 
-    def reset(self, horizon: int, rng: np.random.Generator, k: int | None, teacher=None):
+    def reset(self, horizon: int, rng: np.random.Generator, k: int | None, teacher=None, hold: bool = False):
         self.online = self.OnlineTeacher(self.teacher, self.task, "chunk")
         self.src, _ = state_source(horizon, "z-teacher", rng, k=k, train=False)
+        if hold:
+            self.src, _ = hold_start(self.src)
         self.t = 0
 
     @torch.no_grad()
@@ -151,7 +190,7 @@ class ReplayRunner:
 
 
 def evaluate(run_dir: str, suite: str, task_id: int, out: str, k: int | None = None, episodes: int = 50,
-             seed: int = 0, replay: bool = False) -> dict:
+             seed: int = 0, replay: bool = False, hold: bool = False) -> dict:
     out = Path(out)
     if out.exists():
         print(f"skip: {out} exists")
@@ -171,6 +210,7 @@ def evaluate(run_dir: str, suite: str, task_id: int, out: str, k: int | None = N
         runner = ReplayRunner(Teacher(run_dir), key)
     if runner.condition in ("oracle-delayed", "z-teacher", "replay"):
         assert k is not None, f"{runner.condition} needs --k"
+    assert not hold or runner.condition in ("z-teacher", "replay"), "--hold-start is for plan-following runs"
     teacher = None
     if runner.condition == "z-teacher":
         from ecvla.teacher import Teacher
@@ -199,7 +239,7 @@ def evaluate(run_dir: str, suite: str, task_id: int, out: str, k: int | None = N
         if not replay and runner.cfg.fixtures:  # models without fixture tokens (no fixture data) ignore the scene's fixtures
             assert sensors.fixtures == ckpt["fixtures"][key], (sensors.fixtures, ckpt["fixtures"][key])
         logger.take()
-        runner.reset(horizon, rng, k, teacher)
+        runner.reset(horizon, rng, k, teacher, hold)
         success, steps = False, 0
         for steps in range(1, horizon + 1):
             o = sensors.observe(obs)
@@ -209,12 +249,13 @@ def evaluate(run_dir: str, suite: str, task_id: int, out: str, k: int | None = N
                 success = True
                 break
         logger.detach()
-        results.append({"episode": ep, "success": success, "steps": steps})
+        res_ep = getattr(runner, "residual_summary", lambda: None)()
+        results.append({"episode": ep, "success": success, "steps": steps, **({"residual": res_ep} if res_ep else {})})
         print(f"ep {ep} success={success} steps={steps}", flush=True)
     env.close()
     res = {
         "run": str(run_dir), "suite": suite, "task_id": task_id, "task": key, "condition": runner.condition,
-        "replay": replay,
+        "replay": replay, "hold_start": hold,
         "k": k, "episodes": len(results), "success_rate": float(np.mean([r["success"] for r in results])),
         "per_episode": results, "seconds": round(time.time() - t0, 1), "info": ckpt["info"],
     }
@@ -235,16 +276,17 @@ def main():
     ap.add_argument("--episodes", type=int, default=50)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--replay", action="store_true", help="EXP-0003 reference arm: teacher executes its delayed plan")
+    ap.add_argument("--hold-start", action="store_true", help="EXP-0004: hold until the first plan (treated as fresh)")
     a = ap.parse_args()
     ks = a.k or [None]
     if a.out:
         assert len(a.task) == 1 and len(ks) == 1, "--out takes one task and one k; use --out-dir"
-        evaluate(a.run_dir, a.suite, a.task[0], a.out, ks[0], a.episodes, a.seed, a.replay)
+        evaluate(a.run_dir, a.suite, a.task[0], a.out, ks[0], a.episodes, a.seed, a.replay, a.hold_start)
         return
     for task in a.task:
         for k in ks:
             out = Path(a.out_dir) / f"{a.suite}_t{task}_k{k if k is not None else '-'}.json"
-            evaluate(a.run_dir, a.suite, task, str(out), k, a.episodes, a.seed, a.replay)
+            evaluate(a.run_dir, a.suite, task, str(out), k, a.episodes, a.seed, a.replay, a.hold_start)
 
 
 if __name__ == "__main__":
