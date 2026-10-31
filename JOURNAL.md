@@ -2,6 +2,15 @@
 
 Newest entries first. Each entry covers what was tried, the result, and what failed and why.
 
+## 2026-10-31: EXP-0003 done — H1 inconclusive; the student falls short of the teacher replaying its own plan
+
+- **H1 inconclusive as pre-registered** (100k, k = 20, Spatial + Object, 3 seeds): `track` 22.4% vs EXP-0002 11.6%, **+10.7 pp** (seeds +9.6 / +10.8 / +11.8; support needs ≥ 15, refutation < 5), **0.32** of the H40 teacher (needs ≥ 0.50). Consistent across seeds, just too small.
+- **Reference arm `replay`** (teacher executes `plan[age]` of its own delayed plan): 76.8 / 76.3 / 70.8 / 40.2% at k = 1 / 4 / 10 / 20. Ratio k20/k1 = 0.52, just over the pre-registered 0.5, so by the rule the shortfall lies with the student; the plan alone also loses half. `track` − `replay` = −17.9 pp at k = 20, −8.1 at k = 10, within ±4 at k ≤ 4. `replay` at k = 1 beats the teacher's own closed loop (76.8 vs 68.9%, every seed), not explained.
+- **Residual use (§6, post-hoc, held-out demos, teacher-forced):** the bound is never the limit (100k k = 20: 0.07% of steps at ≥ 95% of the bound; mean position residual 0.025 raw vs 0.5). The residual cuts L1 by 7% at k = 20 and never moves the gripper (~0.003 vs ±1). On demos student ≈ plan, so the closed-loop gap to `replay` is unexplained; candidates (not tested): closed-loop residual growth off the demo distribution, and the first k steps where the student acts alone vs `replay` using the teacher's fresh output.
+- **10k student:** 5.9 → 66.3% at k = 10 (0.96 of the teacher), 21.8 → 73.1% at k = 1, within 4.5 pp of `replay` at k ≤ 10. Confounded with the window shrinking z 280 → 56-d (d 16 → 20); a 9k-param policy executes the 10M teacher's delayed plan about as well as the teacher does, up to k = 10. 100k at k ≤ 10: unchanged (−1.0 to +4.9 pp).
+- Ops: replay, students and evals all completed on calc-cpu overnight (67 jobs, no failures; last eval 07:42, last replay 08:37). The residual check (job 122419, cpu-debug) never started (c-005..007 full, c-001..004 reserved; start estimate slipped 11:43 → 16:00); cancelled and run locally on a copy (`data/ecvla_scratch`: prepared_v2 55 MB, teacher_z 771 MB, students; ~20 min to copy over the tunnel, a few minutes to run).
+- Results: `experiments/EXP-0003-tracking-structure/results/`, README §8. Next: queue #4 (late arrivals / rolling z forward) or #6 (latent compression); the author decides.
+
 ## 2026-10-30: Session handoff — EXP-0003 queued, nothing run yet
 
 - **State at 15:30:** replay 122192 (6), students 122193 (12) and submitter 122194 all PENDING on calc-cpu (c-001..004 reserved for `aiub-prime`, c-006/007 full). Slurm start estimates: students ~18:00, replay ~06:00 tomorrow, submitter ~16:00 tomorrow. Time limits lowered to 3 h / 5 h / 10 h. Author: keep waiting, do not move to the GPU node.

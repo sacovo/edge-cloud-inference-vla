@@ -7,7 +7,8 @@ mean / p95 |r_b| in raw action units (bound = 0.5 raw); gripper (unbounded): mea
 (raw units) of the student and of the plan alone (plan[age], what `replay` executes). Teacher-forced: the student sees
 the demo's proprio and torque, so closed-loop residuals can differ.
 
-Runs as a job (needs torch + the ecvla env):  python scripts/exp0003_residual_bound.py --out <json>
+Runs as a job or locally (needs torch + the ecvla env; set ECVLA_SCRATCH to a copy of a1/prepared_v2,
+exp0002/teacher_z and exp0003/runs/students):  python scripts/exp0003_residual_bound.py --out <json>
 """
 
 import argparse
@@ -23,7 +24,8 @@ import ecvla.train as tr
 from ecvla.policy import ACT_DIM, FastPolicy, PolicyConfig
 from ecvla.train import Batcher, EpisodeData
 
-S = Path(os.environ.get("ECVLA_SCRATCH", "/scratch/sandro.covo/ecvla"))
+CLUSTER_SCRATCH = Path("/scratch/sandro.covo/ecvla")
+S = Path(os.environ.get("ECVLA_SCRATCH", CLUSTER_SCRATCH))
 DATA = S / "a1/prepared_v2"
 RUNS = S / "exp0003/runs/students"
 SUITES = ("libero_spatial", "libero_object")
@@ -40,7 +42,8 @@ def residuals(run_dir: Path, suite: str) -> dict:
     assert cfg.track
     model = FastPolicy(cfg).eval()
     model.load_state_dict(ckpt["state_dict"])
-    data = EpisodeData(DATA, [suite], val_per_task=2, latent_dir=ckpt["info"]["args"]["latent_dir"])
+    latent_dir = S / Path(ckpt["info"]["args"]["latent_dir"]).relative_to(CLUSTER_SCRATCH)  # also runs on a local copy
+    data = EpisodeData(DATA, [suite], val_per_task=2, latent_dir=latent_dir)
     assert data.tasks == ckpt["tasks"], "task order differs from the student's training data"
     batcher = Batcher(data, ckpt["stats"], "z-teacher", torch.device("cpu"), cfg.chunk, track=True)
     std = torch.tensor(ckpt["stats"]["actions"][1])

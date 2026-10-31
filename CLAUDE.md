@@ -7,7 +7,8 @@ Research question: how small can the on-robot policy be when it is conditioned o
 - Phase 2: sim experiments, **one question per experiment**, in the order of `experiments/QUEUE.md`; results are combined at the end.
   - EXP-0001 closed after Phase A (results in its §10): LIBERO needs no scene state; a 100k student reaches 84–95% of a 10M teacher via its plan at k ≤ 4.
   - EXP-0002 done (results in its §8): a 40-step plan lifts the 100k student at k = 10 from 39% to 61% (H1 supported); k = 20 still collapses; the 10k student is worse with the 280-d z.
-  - **Now: EXP-0003 (tracking structure), pre-registered, jobs queued (nothing run yet).** Finishing steps in the latest JOURNAL entry; primary criterion 100k, k = 20.
+  - EXP-0003 done (results in its §8): H1 inconclusive (100k k = 20: 22.4% vs 11.6%, +10.7 pp, bar 15); the student falls 17.9 pp short of the teacher replaying its own delayed plan; the residual never nears its bound; the 10k student reaches 0.96 of the teacher at k = 10.
+  - **Next: pick queue #4 or #6 with the author** (`experiments/QUEUE.md`).
 
 ## Session start
 Read `JOURNAL.md` (latest entries first) before doing anything else.
