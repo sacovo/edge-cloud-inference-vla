@@ -22,7 +22,7 @@ Background for all of them: EXP-0001 showed that a 100k fast policy reaches 84â€
 
 ## Later, independent of the chain
 
-- **VLM latents (was EXP-0001 A1b/A2):** FAST fine-tune of `pi05_base`, then the student setup with a real VLM latent instead of the teacher. Probe every candidate z for continuous and future state first (ALPS-style probe, Theme 8), including V-JEPA 2 as a slow-side encoder (H0).
+- **VLM latents (was EXP-0001 A1b/A2):** first step drafted as EXP-0005 (2026-11-01, author): how small an on-robot decoder can reconstruct the plan from the frozen FAST-fine-tuned `pi05_base` latent; the student with sensors on top is the step after. FAST fine-tune of `pi05_base`, then the student setup with a real VLM latent instead of the teacher. Probe every candidate z for continuous and future state first (ALPS-style probe, Theme 8), including V-JEPA 2 as a slow-side encoder (H0).
 - **State hypotheses (was EXP-0001 Phase B):** tasks where the needed state is unobservable from proprio and force/torque and changes during the episode (observability rule; object moved while not touching it, moving targets).
 - **Infrastructure:** backbone-only latency on an H200, the Jetson Orin NX/Nano benchmark, full-vision eval timing.
 
