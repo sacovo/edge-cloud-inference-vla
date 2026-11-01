@@ -2,6 +2,15 @@
 
 Newest entries first. Each entry covers what was tried, the result, and what failed and why.
 
+## 2026-11-01: EXP-0004 (hold start) pre-registered and started
+
+- Author's idea: before #4/#6, find out why the `track` student falls 17.9 pp short of `replay` at k = 20 in sim; hold the robot until the first plan arrives (both arms). Author's choices: first plan treated as fresh (ages 0..k−1), hold steps not counted, closed-loop residual logging added to the eval. Primary: 100k, k = 20; supported if the gap with hold is ≤ ⅓ of the gap without, refuted if ≥ ⅔.
+- Code: `evaluate.py --hold-start` (schedule src −1 → 0; equivalent to a physical hold because the scene is static) and per-episode residual summaries for `track` students; test added (60 pass). Analysis script and manifests written before any run.
+- Drift check (local, 100 episodes): a 20-step no-op hold after settling moves the EEF ≤ 2.0 mm / 0.23°, objects ≤ 2.5 mm.
+- Debug 122623 passed; the no-hold rerun reproduces EXP-0003 exactly. In the 2 debug episodes, residuals without hold are large right after the first plan (0.11–0.12 raw in the first window) and small with hold (≤ 0.01); 2 episodes, not a result.
+- Full runs 122857/122858/122859 (54 jobs) all started at once on c-005..007 (now free).
+- Slips: the tunnel dropped mid-session (work continued locally; the VPN came back later). A background wait put a `python3` JSON read on the login node; stopped before it ran and replaced with a local read.
+
 ## 2026-10-31: EXP-0003 done — H1 inconclusive; the student falls short of the teacher replaying its own plan
 
 - **H1 inconclusive as pre-registered** (100k, k = 20, Spatial + Object, 3 seeds): `track` 22.4% vs EXP-0002 11.6%, **+10.7 pp** (seeds +9.6 / +10.8 / +11.8; support needs ≥ 15, refutation < 5), **0.32** of the H40 teacher (needs ≥ 0.50). Consistent across seeds, just too small.

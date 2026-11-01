@@ -1,6 +1,6 @@
 # EXP-0004: Does the start-up phase explain why the `track` student falls short of the plan it receives?
 
-- **Status:** pre-registered (criteria approved by the author 2026-10-31); code and tests done, debug runs in progress
+- **Status:** pre-registered (criteria approved by the author 2026-10-31); debug runs passed; full runs started 2026-11-01
 - **Platform:** LIBERO-Spatial and LIBERO-Object, blind fast policies, simulated delay (same setup as EXP-0003)
 - **Related:** EXP-0003 §8 (`replay` reference arm, residual use on demos), `experiments/QUEUE.md`.
 
@@ -83,3 +83,4 @@ _Not started._
 - 2026-10-31: initial draft. Idea (hold the robot until the first plan; investigate the closed-loop divergence before queue #4/#6), hold semantics (first plan treated as fresh), budget (hold steps not counted) and residual logging in the eval chosen by the author.
 - 2026-10-31: criteria approved by the author before any run. Code: `--hold-start` and residual logging in `evaluate.py`; test (schedule src −1 → 0 with ages 0..k−1, unchanged after; logged residual = executed action − plan; zero-residual student = replay from step 0 with hold); 60 tests pass. Manifests (`scripts/exp0004_manifests.py`: 24 + 24 student evals, 6 replay jobs) and the analysis script (`scripts/exp0004_summarize.py`, dry-run on EXP-0003 data as stand-ins) written before any run.
 - 2026-10-31 (debug, §6 drift check, before any eval): after the 10 settle steps, a 20-step no-op hold moves the end effector by ≤ 2.0 mm (median 0.4) and ≤ 0.23°, objects by ≤ 2.5 mm (one Spatial task; median 0), over 10 tasks × 5 initial states × 2 suites (`scripts/exp0004_hold_drift.py`, `results/hold_drift.json`). The schedule implementation of the hold is taken as valid. No criterion changed.
+- 2026-11-01 (debug, before any full run): job 122623 on cpu-debug, Spatial task 0, 2 episodes at k = 20 for the 100k s0 student with and without hold and for `replay-hold` (outputs under `$ECVLA_SCRATCH/exp0004_debug`, separate from the real runs). All run; the no-hold rerun reproduces EXP-0003's episodes exactly (steps 73 / 83). Full runs: 122857 (`student_hold`, 24), 122858 (`student_log`, 24), 122859 (`replay_hold`, 6). No criterion changed.
