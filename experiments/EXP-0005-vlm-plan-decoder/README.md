@@ -1,6 +1,6 @@
 # EXP-0005: How small can an on-robot decoder be that reconstructs the plan from a VLM latent?
 
-- **Status:** draft (2026-11-01); dataset, latent, recipe and k decided by the author 2026-11-02; decoder architecture and criteria awaiting approval
+- **Status:** draft (2026-11-01); dataset, latent, recipe, k, decoder heads and the H1 thresholds decided by the author 2026-11-02; the precondition threshold awaits confirmation
 - **Platform:** LIBERO-Spatial and LIBERO-Object; slow model `pi05_base` (FAST fine-tuned, frozen); simulated delay
 - **Related:** EXP-0001 §3 (slow model, backbone stage, readouts; designed, never run), EXP-0001–0003 (a 10k–100k student executes a 10M teacher's plan at k ≤ 4), `experiments/QUEUE.md` ("VLM latents").
 
@@ -29,10 +29,14 @@ With a VLM latent the plan is not linearly attached: the latent has to be decode
 
 ### On-robot decoder (the variable)
 
-- MLP: d_z → hidden → hidden → 40 × 7 (a 40-step chunk, as the EXP-0002/0003 teachers), GELU, L1 loss on normalized demo actions (same normalization and target construction as `train.py`). Input is z only: no proprio, no task token, no age (fresh plan, age 0; delay enters only in closed loop, below).
-- **Sizes (on-robot parameters):** 3k, 10k, 30k, 100k, 300k, 1M (hidden width set per size and d_z). For each size, d_z is chosen by validation L1 on held-out demos (never on closed-loop success).
+- MLP: d_z → hidden → hidden → output, GELU, L1 loss on the normalized 40 × 7 plan (a 40-step chunk, as the EXP-0002/0003 teachers; same normalization and target construction as `train.py`). Input is z only: no proprio, no task token, no age (fresh plan, age 0; delay enters only in closed loop, below).
+- **Two output heads** (author, 2026-11-02):
+  - `raw`: the output layer predicts all 40 × 7 values.
+  - `dct`: the output layer predicts the first n_c DCT-II coefficients per action dimension (7 × n_c outputs); a fixed, parameter-free inverse DCT rebuilds the 40 steps, and the L1 loss is on the rebuilt plan. Why: at small sizes the 280-wide output layer takes most of the budget (10k, d_z = 16: ~29 hidden units, ~80% of the parameters in the output layer; with n_c = 8, ~67 hidden units). The basis is fixed and assumes only smooth plans, the premise of FAST's per-dimension DCT (`pertsch2025fast`, Sec. V-B, via Theme 7).
+  - n_c is fixed **before training**: the smallest n_c whose truncated DCT reconstructs the training-split demo chunks to within 10% of the H40 teacher's held-out first-step L1 (EXP-0002: 0.066), i.e. reconstruction error ≤ 0.0066 in action units.
+- **Sizes (on-robot parameters):** 3k, 10k, 30k, 100k, 300k, 1M (hidden width set per size, head and d_z). For each size, the head (`raw` / `dct`) and d_z are chosen by validation L1 on held-out demos (never on closed-loop success); only the chosen (head, d_z) goes to closed loop.
 - **Data:** LIBERO-Spatial and -Object demos (`prepared_v2`), same train / held-out split as `train.py` (last 2 kept demos per task held out). z precomputed once for all demo frames.
-- **Seeds:** 3 per (size, d_z), one backbone.
+- **Seeds:** 3 per (size, head, d_z), one backbone. Selection uses the mean validation L1 over seeds.
 
 ### Closed loop
 
@@ -61,7 +65,7 @@ Primary latent `z-ft-lib`, closed loop at **k = 4**, Spatial + Object pooled, 3 
 |---|---|---|
 | **H1, primary** | some decoder ≤ 100k reaches ≥ 0.90 of the 1M decoder's success | no decoder ≤ 100k reaches ≥ 0.70 of it |
 
-In between: inconclusive. **Why 100k and 0.90 / 0.70:** 100k is the size at which students matched their teacher from a teacher plan (EXP-0001/0002); the question is whether that survives a latent that must be decoded. The thresholds are proposals for the author (§9).
+In between: inconclusive. **Why 100k and 0.90 / 0.70 (approved by the author 2026-11-02):** 100k is the size at which students matched their teacher from a teacher plan (EXP-0001/0002); the question is whether that survives a latent that must be decoded.
 
 Reported, not gating: the smallest size reaching 0.90 (the floor); k = 10; `z-ft-div` if run; `slow-only` vs the 1M decoder; offline L1 vs closed-loop success across sizes; the positive control.
 
@@ -79,7 +83,7 @@ Reported, not gating: the smallest size reaching 0.90 (the floor); k = 10; `z-ft
 
 0. **Infrastructure (prerequisite, not a test):** LeRobot `pi05_base` in the project env (check against the pinned torch 2.14.1+cu126); Open X-Embodiment mixture + LIBERO demos with FAST+ tokenisation; LoRA FAST fine-tune → `z-ft-lib` on H200; `slow-only` LIBERO success as a sanity check. Debug first: a few hundred steps on `debug` / `h200`, a 2-episode `slow-only` eval.
 1. Precompute R1 for all Spatial + Object demo frames (one forward pass per frame, GPU).
-2. Positive control and offline decoder grid (6 sizes × 3 d_z × 3 seeds × 2 suites; small MLPs on CPU).
+2. Fix n_c from the demos; positive control and offline decoder grid (6 sizes × 2 heads × 3 d_z × 3 seeds × 2 suites; small MLPs on CPU).
 3. Closed loop at k = 4 and 10: 6 sizes × 3 seeds × 2 suites × 2 k plus `slow-only` (GPU: the VLM runs in the loop every 4 steps). Cost estimated from the debug eval before submitting.
 4. Analysis script written before any closed-loop run.
 
@@ -93,10 +97,11 @@ Starting the on-robot student from the smallest working decoder and adding the f
 
 Decided by the author (2026-11-02): Open X-Embodiment mixture (+ LIBERO training demos) for the FAST fine-tune; `z-ft-lib` primary; LoRA first; closed loop at k = 4 and 10.
 
+Also decided (2026-11-02): decoder heads `raw` and `dct`, selected per size offline (§3); the big-model side stays a linear projection (a learned remote encoder would move the decoding work remote, so the floor would measure where the cut is; possible later variant next to queue #6); no transformer / diffusion / flow decoders (EXP-0001 A1-arch check: transformer + L1 37.0% vs GRU + L1 51.9%, flow +0.6 pp). H1 thresholds: 100k, 0.90 / 0.70 of the 1M decoder.
+
 Still open:
 1. **Which Open X-Embodiment subsets**, and how their action spaces map onto LIBERO's delta-pose controller for FAST+ tokenisation (to settle in stage 0).
-2. **Decoder architecture** (proposal under discussion, not in §3 yet).
-3. **Criteria:** 100k as the primary size; 0.90 / 0.70 of the 1M decoder; the 50% precondition against `slow-only`.
+2. **Precondition threshold:** the 1M decoder ≥ 50% of `slow-only` (proposed, not yet confirmed).
 
 ## 10. Results
 
@@ -106,3 +111,4 @@ _Not started._
 
 - 2026-11-01: initial draft. Framing (the size of a latent → plan decoder as the floor of the on-robot model; a VLM latent, not the teacher's, because the teacher's plan is a linear readout of its hidden state) by the author. Builds on EXP-0001 §3 (backbone, FAST fine-tune, R1); the student-with-sensors stage is split off (§8).
 - 2026-11-02 (before any run): author decided Open X-Embodiment (+ LIBERO) for the fine-tune, `z-ft-lib` as primary latent (was `z-ft-div`), LoRA first, closed loop at k = 4 and 10 (primary criterion at k = 4).
+- 2026-11-02 (before any run): decoder heads `raw` and `dct` (fixed inverse DCT, n_c fixed from demo reconstruction before training), head and d_z selected per size on validation L1; big-model side stays linear. H1 thresholds (100k, 0.90 / 0.70) approved by the author.
