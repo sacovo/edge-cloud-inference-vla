@@ -1,6 +1,6 @@
 # EXP-0005: How small can an on-robot decoder be that reconstructs the plan from a VLM latent?
 
-- **Status:** draft (2026-11-01); dataset, latent, recipe, k, decoder heads and the H1 thresholds decided by the author 2026-11-02; the precondition threshold awaits confirmation
+- **Status:** draft (2026-11-01); dataset, latent, recipe, k, decoder heads and all criteria decided by the author 2026-11-02; stage 0 (Open X-Embodiment subset choice) in progress
 - **Platform:** LIBERO-Spatial and LIBERO-Object; slow model `pi05_base` (FAST fine-tuned, frozen); simulated delay
 - **Related:** EXP-0001 §3 (slow model, backbone stage, readouts; designed, never run), EXP-0001–0003 (a 10k–100k student executes a 10M teacher's plan at k ≤ 4), `experiments/QUEUE.md` ("VLM latents").
 
@@ -99,9 +99,9 @@ Decided by the author (2026-11-02): Open X-Embodiment mixture (+ LIBERO training
 
 Also decided (2026-11-02): decoder heads `raw` and `dct`, selected per size offline (§3); the big-model side stays a linear projection (a learned remote encoder would move the decoding work remote, so the floor would measure where the cut is; possible later variant next to queue #6); no transformer / diffusion / flow decoders (EXP-0001 A1-arch check: transformer + L1 37.0% vs GRU + L1 51.9%, flow +0.6 pp). H1 thresholds: 100k, 0.90 / 0.70 of the 1M decoder.
 
-Still open:
-1. **Which Open X-Embodiment subsets**, and how their action spaces map onto LIBERO's delta-pose controller for FAST+ tokenisation (to settle in stage 0).
-2. **Precondition threshold:** the 1M decoder ≥ 50% of `slow-only` (proposed, not yet confirmed).
+Precondition: the 1M decoder ≥ 50% of `slow-only` (confirmed by the author 2026-11-02).
+
+Still open: **which Open X-Embodiment subsets**, and how their action spaces map onto LIBERO's for FAST+ tokenisation (stage 0). Target format, verified in the installed packages: robosuite `OSC_POSE` with `control_delta: true` at 20 Hz (`libero/envs/env_wrapper.py`), 7-d action = delta position (3) + delta rotation (3, axis-angle) in [−1, 1], scaled to at most ±0.05 m and ±0.5 rad per step (`robosuite/controllers/config/osc_pose.json`), gripper −1 open / +1 close (our demos: exactly ±1).
 
 ## 10. Results
 
@@ -112,3 +112,4 @@ _Not started._
 - 2026-11-01: initial draft. Framing (the size of a latent → plan decoder as the floor of the on-robot model; a VLM latent, not the teacher's, because the teacher's plan is a linear readout of its hidden state) by the author. Builds on EXP-0001 §3 (backbone, FAST fine-tune, R1); the student-with-sensors stage is split off (§8).
 - 2026-11-02 (before any run): author decided Open X-Embodiment (+ LIBERO) for the fine-tune, `z-ft-lib` as primary latent (was `z-ft-div`), LoRA first, closed loop at k = 4 and 10 (primary criterion at k = 4).
 - 2026-11-02 (before any run): decoder heads `raw` and `dct` (fixed inverse DCT, n_c fixed from demo reconstruction before training), head and d_z selected per size on validation L1; big-model side stays linear. H1 thresholds (100k, 0.90 / 0.70) approved by the author.
+- 2026-11-02 (before any run): precondition (1M decoder ≥ 50% of `slow-only`) confirmed by the author; all criteria now fixed. LIBERO target action format recorded in §9.
