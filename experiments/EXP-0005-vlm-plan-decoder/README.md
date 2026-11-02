@@ -1,6 +1,6 @@
 # EXP-0005: How small can an on-robot decoder be that reconstructs the plan from a VLM latent?
 
-- **Status:** draft (2026-11-01), awaiting the author's decisions (§9) and approval of the criteria
+- **Status:** draft (2026-11-01); dataset, latent, recipe and k decided by the author 2026-11-02; decoder architecture and criteria awaiting approval
 - **Platform:** LIBERO-Spatial and LIBERO-Object; slow model `pi05_base` (FAST fine-tuned, frozen); simulated delay
 - **Related:** EXP-0001 §3 (slow model, backbone stage, readouts; designed, never run), EXP-0001–0003 (a 10k–100k student executes a 10M teacher's plan at k ≤ 4), `experiments/QUEUE.md` ("VLM latents").
 
@@ -22,8 +22,8 @@ With a VLM latent the plan is not linearly attached: the latent has to be decode
 
 ### Slow side (fixed for the whole experiment)
 
-- **Backbone** as EXP-0001 §3: `pi05_base` (LeRobot port), fine-tuned autoregressively on FAST+ action tokens, then **frozen**. One backbone run serves the whole grid.
-  - Primary latent `z-ft-div` (diverse robot data, no LIBERO; author's decision of 2026-10-28). `z-ft-lib` (adds the LIBERO training demos of the evaluated suites) is the secondary variant. `z-frozen` is not run (§9).
+- **Backbone** as EXP-0001 §3: `pi05_base` (LeRobot port), fine-tuned autoregressively on FAST+ action tokens with **LoRA** (author, 2026-11-02; full fine-tune only if LoRA fails the `slow-only` sanity check), then **frozen**. One backbone run serves the whole grid.
+  - **Primary latent `z-ft-lib`** (author, 2026-11-02): fine-tuning data = an **Open X-Embodiment** mixture + the LIBERO training demos of the evaluated suites (never evaluation initial states). Changed from EXP-0001's `z-ft-div` primary because a backbone that never saw LIBERO actions could fail the precondition (§5) for reasons unrelated to decoder size. `z-ft-div` (same mixture, no LIBERO) is an optional secondary variant; `z-frozen` is not run.
 - **Readout R1** (EXP-0001 §3): final-layer hidden state at the position that predicts the first action token, concatenated with the mean-pooled prefix. One forward pass, no decoding. Inputs: agent-view + wrist RGB and the instruction.
 - **Slow-side projection.** A linear map from R1 to d_z ∈ {16, 64, 256}, trained jointly with each decoder but **run on the slow machine** (it is part of what is transmitted, and it sets the payload). Not counted in the on-robot size; its parameters and the payload bytes are reported.
 
@@ -37,7 +37,7 @@ With a VLM latent the plan is not linearly attached: the latent has to be decode
 ### Closed loop
 
 - **`decoder-replay`:** the VLM (frozen) is queried every k = 4 steps from the current observation; its z arrives exactly k steps later; the decoder turns it into a 40-step plan, and the robot executes step `age` of the latest delivered plan (as EXP-0003's `replay`). Before the first plan: hold start as EXP-0004 (first plan treated as fresh), to keep start-up effects out.
-- k = 4 only (the project's operating point: ~5 Hz slow updates, 20 Hz control). Evaluation as EXP-0001–0004: 50 fixed initial states × 10 tasks per suite, eval seed 0.
+- **k = 4 and 10** (author, 2026-11-02; k = 4 is the project's operating point, ~5 Hz slow updates at 20 Hz control; k = 10 is 2 Hz). EXP-0004 showed both are usable with a hold start for a teacher plan. Evaluation as EXP-0001–0004: 50 fixed initial states × 10 tasks per suite, eval seed 0.
 - **References** (same protocol): `slow-only` (the fine-tuned backbone decodes its own FAST action chunk, executed the same way at k = 4) and the **1M decoder** (the reference in §5).
 
 ### Positive control (offline, cheap)
@@ -47,15 +47,15 @@ The same decoder grid on the EXP-0002 H40 teacher's hidden state (`z_hidden`, 70
 ## 4. Measurements
 
 - **Offline:** plan L1 on held-out demos per chunk step (as EXP-0002 post-hoc), per (latent, size, d_z, seed); the VLM's own decoded FAST chunk (`slow-only`) on the same frames as a reference.
-- **Closed loop:** success per (suite, size, seed) at k = 4; pooled Spatial + Object per seed; ratio to the 1M decoder (mean / mean) with bootstrap 95% CI over seeds; per-seed values.
+- **Closed loop:** success per (suite, size, seed, k); pooled Spatial + Object per seed; ratio to the 1M decoder (mean / mean) with bootstrap 95% CI over seeds; per-seed values.
 - **The size curve** (success vs on-robot parameters) is the main reported result.
 - Payload (d_z × bytes) per update; slow-side projection parameters; R1 width.
 
 ## 5. Pre-registered criteria
 
-Primary latent `z-ft-div`, closed loop at k = 4, Spatial + Object pooled, 3 seeds.
+Primary latent `z-ft-lib`, closed loop at **k = 4**, Spatial + Object pooled, 3 seeds. k = 10 is reported with the same statistics, not gating.
 
-- **Precondition (H0-latent):** the 1M decoder reaches ≥ 50% of `slow-only`'s success. If not, the result is "the latent does not carry a usable plan" and H1 is not evaluated; `z-ft-lib` is then reported as the in-domain check.
+- **Precondition (H0-latent):** the 1M decoder reaches ≥ 50% of `slow-only`'s success. If not, the result is "the latent does not carry a usable plan" and H1 is not evaluated.
 
 | | Supported if | Refuted if |
 |---|---|---|
@@ -63,12 +63,12 @@ Primary latent `z-ft-div`, closed loop at k = 4, Spatial + Object pooled, 3 seed
 
 In between: inconclusive. **Why 100k and 0.90 / 0.70:** 100k is the size at which students matched their teacher from a teacher plan (EXP-0001/0002); the question is whether that survives a latent that must be decoded. The thresholds are proposals for the author (§9).
 
-Reported, not gating: the smallest size reaching 0.90 (the floor); `z-ft-lib`; `slow-only` vs the 1M decoder; offline L1 vs closed-loop success across sizes; the positive control.
+Reported, not gating: the smallest size reaching 0.90 (the floor); k = 10; `z-ft-div` if run; `slow-only` vs the 1M decoder; offline L1 vs closed-loop success across sizes; the positive control.
 
 ## 6. Threats to validity
 
 - **One backbone run.** Seeds vary the decoder only; backbone variance is not measured.
-- **`pi05_base` pretraining may include LIBERO** (EXP-0001 §5 risk). Check its data card before the backbone stage; if it does, `z-ft-div` is partly in-domain. Logged either way.
+- **The latent is in-domain** (`z-ft-lib` saw LIBERO training demos), so the floor is for a slow model tuned to the suite. `pi05_base` pretraining may also include LIBERO (EXP-0001 §5 risk); checked on its data card and logged.
 - **The slow-side projection does real work.** Counting it as "remote" is a deployment choice (it runs where the backbone runs and cuts the payload). Reported separately so the on-robot floor can be read with and without it.
 - **Readout R1 only.** A poor floor could be the readout; R2 (decoded-token states) is a later variant.
 - **LIBERO needs no scene state** (EXP-0001 A-test), so the latent only has to carry the plan. The floor measured here is a floor for plan decoding, not for state extraction.
@@ -77,10 +77,10 @@ Reported, not gating: the smallest size reaching 0.90 (the floor); `z-ft-lib`; `
 
 ## 7. Plan and cost
 
-0. **Infrastructure (prerequisite, not a test):** LeRobot `pi05_base` in the project env (check against the pinned torch 2.14.1+cu126); diverse dataset (§9); FAST fine-tune → `z-ft-div` (then `z-ft-lib`) on H200; `slow-only` LIBERO success as a sanity check. Debug first: a few hundred steps on `debug` / `h200`, a 2-episode `slow-only` eval.
+0. **Infrastructure (prerequisite, not a test):** LeRobot `pi05_base` in the project env (check against the pinned torch 2.14.1+cu126); Open X-Embodiment mixture + LIBERO demos with FAST+ tokenisation; LoRA FAST fine-tune → `z-ft-lib` on H200; `slow-only` LIBERO success as a sanity check. Debug first: a few hundred steps on `debug` / `h200`, a 2-episode `slow-only` eval.
 1. Precompute R1 for all Spatial + Object demo frames (one forward pass per frame, GPU).
 2. Positive control and offline decoder grid (6 sizes × 3 d_z × 3 seeds × 2 suites; small MLPs on CPU).
-3. Closed loop at k = 4: 6 sizes × 3 seeds × 2 suites plus `slow-only` (GPU: the VLM runs in the loop every 4 steps). Cost estimated from the debug eval before submitting.
+3. Closed loop at k = 4 and 10: 6 sizes × 3 seeds × 2 suites × 2 k plus `slow-only` (GPU: the VLM runs in the loop every 4 steps). Cost estimated from the debug eval before submitting.
 4. Analysis script written before any closed-loop run.
 
 The backbone stage (0) is the expensive and uncertain part; its cost is estimated in the debug run and logged before the full fine-tune.
@@ -89,13 +89,14 @@ The backbone stage (0) is the expensive and uncertain part; its cost is estimate
 
 Starting the on-robot student from the smallest working decoder and adding the fast sensor inputs (proprio, torque, F/T, and later camera), compared against the same student trained from scratch. Its value can only show on tasks where the plan alone is not enough (EXP-0003/0004: on LIBERO the student mostly executes the plan), so that experiment also needs such a task.
 
-## 9. Open decisions (author)
+## 9. Decisions
 
-1. **Diverse dataset** for the FAST fine-tune (EXP-0001 §8, still open): which mixture (e.g. DROID / Open X-Embodiment subsets), and how its action spaces map onto LIBERO's controller.
-2. **Primary latent:** keep `z-ft-div` (no LIBERO, decided 2026-10-28), or make `z-ft-lib` primary for this question (decoding a LIBERO plan from a backbone that never saw LIBERO actions may fail the precondition for reasons unrelated to size).
-3. **Fine-tuning recipe:** full fine-tune vs LoRA (EXP-0001 §8, still open).
-4. **Criteria:** 100k as the primary size; 0.90 / 0.70 of the 1M decoder; the 50% precondition against `slow-only`.
-5. **Closed-loop k:** k = 4 only (proposed), or also k = 10.
+Decided by the author (2026-11-02): Open X-Embodiment mixture (+ LIBERO training demos) for the FAST fine-tune; `z-ft-lib` primary; LoRA first; closed loop at k = 4 and 10.
+
+Still open:
+1. **Which Open X-Embodiment subsets**, and how their action spaces map onto LIBERO's delta-pose controller for FAST+ tokenisation (to settle in stage 0).
+2. **Decoder architecture** (proposal under discussion, not in §3 yet).
+3. **Criteria:** 100k as the primary size; 0.90 / 0.70 of the 1M decoder; the 50% precondition against `slow-only`.
 
 ## 10. Results
 
@@ -104,3 +105,4 @@ _Not started._
 ## Change log
 
 - 2026-11-01: initial draft. Framing (the size of a latent → plan decoder as the floor of the on-robot model; a VLM latent, not the teacher's, because the teacher's plan is a linear readout of its hidden state) by the author. Builds on EXP-0001 §3 (backbone, FAST fine-tune, R1); the student-with-sensors stage is split off (§8).
+- 2026-11-02 (before any run): author decided Open X-Embodiment (+ LIBERO) for the fine-tune, `z-ft-lib` as primary latent (was `z-ft-div`), LoRA first, closed loop at k = 4 and 10 (primary criterion at k = 4).
