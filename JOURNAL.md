@@ -2,6 +2,16 @@
 
 Newest entries first. Each entry covers what was tried, the result, and what failed and why.
 
+## 2026-11-02: EXP-0004 done — H1 supported: the k = 20 collapse was mostly the blind start
+
+- **H1 supported as pre-registered** (100k, k = 20, Spatial + Object, 3 seeds): gap `replay` − `track` 17.9 pp without hold → **4.0 pp** with hold (seeds 6.0 / 0.2 / 5.7; 0.22 of the no-hold gap, bar ⅓).
+- **Both arms jump with hold:** 100k `track` 22.4 → **61.1%** (0.89 of the teacher), `replay` 40.2 → 65.1%; 10k `track` 24.4 → 55.5%. At k = 10 the gap disappears (100k 74.2 vs 74.6%). So the k = 20 collapse in EXP-0002/0003 was mostly how episodes start, not plan staleness; a 1 s update period works if the robot waits for the first plan. EXP-0003's verdict stays as recorded (different protocol).
+- **Residuals do not grow in closed loop** (100k k = 20 hold: 0.005 raw vs 0.025 teacher-forced). Without hold the residual spikes to 0.139 over the first 40 plan steps, then drops: the student fights a plan that no longer fits where its blind start took the robot. The student still adds nothing over the plan.
+- 10k k = 20 keeps a 9.5 pp gap, driven by seed s1 (23.7; others 0.9 / 4.0).
+- The no-hold rerun reproduces EXP-0003 exactly on Object, within 1.2 pp on Spatial (11 of 24 cells differ): the Spatial eval is not fully deterministic. Small against the effects; reported.
+- This changes the earlier assessment ("stop pushing k = 20"): with a hold start, k = 20 is usable at 0.81–0.89 of the teacher.
+- Author's decisions for EXP-0005 (2026-11-02): Open X-Embodiment for the FAST fine-tune, `z-ft-lib` primary, LoRA first, closed loop at k = 4 and 10.
+
 ## 2026-11-01: EXP-0004 (hold start) pre-registered and started
 
 - Author's idea: before #4/#6, find out why the `track` student falls 17.9 pp short of `replay` at k = 20 in sim; hold the robot until the first plan arrives (both arms). Author's choices: first plan treated as fresh (ages 0..k−1), hold steps not counted, closed-loop residual logging added to the eval. Primary: 100k, k = 20; supported if the gap with hold is ≤ ⅓ of the gap without, refuted if ≥ ⅔.
