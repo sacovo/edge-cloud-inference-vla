@@ -24,6 +24,11 @@ With a VLM latent the plan is not linearly attached: the latent has to be decode
 
 - **Backbone** as EXP-0001 §3: `pi05_base` (LeRobot port), fine-tuned autoregressively on FAST+ action tokens with **LoRA** (author, 2026-11-02; full fine-tune only if LoRA fails the `slow-only` sanity check), then **frozen**. One backbone run serves the whole grid.
   - **Primary latent `z-ft-lib`** (author, 2026-11-02): fine-tuning data = an **Open X-Embodiment** mixture + the LIBERO training demos of the evaluated suites (never evaluation initial states). Changed from EXP-0001's `z-ft-div` primary because a backbone that never saw LIBERO actions could fail the precondition (§5) for reasons unrelated to decoder size. `z-ft-div` (same mixture, no LIBERO) is an optional secondary variant; `z-frozen` is not run.
+- **Fine-tuning data recipe** (author, 2026-11-02; evidence in `cross_embodiment_brief.md`): as `pi05_base`'s own pretraining (2504.16054 §IV-C).
+  - **Native action formats**, no conversion to LIBERO's: each dataset is normalized per action dimension to [−1, 1] by its own 1% / 99% quantiles and padded to the backbone's action dimension. Joint-space and absolute-pose datasets are therefore usable (candidate list and formats: `oxe_action_formats.md`).
+  - **Condition in the text prompt**: robot, control mode and rate, e.g. `robot: franka; control: delta end effector; 20 Hz` (π0.5 marks the control mode in the prompt, §IV-C; RDT-1B feeds the rate, 2410.07864 App. D). The LeRobot OXE ports have `robot_type` "unknown", so the fields come from the OXE spreadsheet. The exact prompt format follows what the LeRobot `pi05` code expects (stage 0).
+  - **Aligned anyway:** gripper sign. **Excluded:** datasets whose documentation contradicts itself (`taco_play` gripper, `toto` action space) and ones without rotation (`jaco_play`, `language_table`).
+  - **Weights:** LIBERO Spatial + Object training demos up-weighted (in-domain data beats OXE, 2412.14058 §II-E); the rest by size, n^0.43 (2410.24164 §V-A). The LIBERO weight is fixed in stage 0 from the mixture sizes, before the fine-tune.
 - **Readout R1** (EXP-0001 §3): final-layer hidden state at the position that predicts the first action token, concatenated with the mean-pooled prefix. One forward pass, no decoding. Inputs: agent-view + wrist RGB and the instruction.
 - **Slow-side projection.** A linear map from R1 to d_z ∈ {16, 64, 256}, trained jointly with each decoder but **run on the slow machine** (it is part of what is transmitted, and it sets the payload). Not counted in the on-robot size; its parameters and the payload bytes are reported.
 
@@ -101,7 +106,7 @@ Also decided (2026-11-02): decoder heads `raw` and `dct`, selected per size offl
 
 Precondition: the 1M decoder ≥ 50% of `slow-only` (confirmed by the author 2026-11-02).
 
-Still open: **which Open X-Embodiment subsets**, and how their action spaces map onto LIBERO's for FAST+ tokenisation (stage 0). Target format, verified in the installed packages: robosuite `OSC_POSE` with `control_delta: true` at 20 Hz (`libero/envs/env_wrapper.py`), 7-d action = delta position (3) + delta rotation (3, axis-angle) in [−1, 1], scaled to at most ±0.05 m and ±0.5 rad per step (`robosuite/controllers/config/osc_pose.json`), gripper −1 open / +1 close (our demos: exactly ±1).
+Recipe decided 2026-11-02 (§3): native formats, per-dataset quantile normalization, prompt condition. Still open (stage 0): the final subset list and the LIBERO weight, after checking how the LeRobot `pi05` code handles prompts, padding and normalization. Target format, verified in the installed packages: robosuite `OSC_POSE` with `control_delta: true` at 20 Hz (`libero/envs/env_wrapper.py`), 7-d action = delta position (3) + delta rotation (3, axis-angle) in [−1, 1], scaled to at most ±0.05 m and ±0.5 rad per step (`robosuite/controllers/config/osc_pose.json`), gripper −1 open / +1 close (our demos: exactly ±1).
 
 ## 10. Results
 
@@ -113,3 +118,4 @@ _Not started._
 - 2026-11-02 (before any run): author decided Open X-Embodiment (+ LIBERO) for the fine-tune, `z-ft-lib` as primary latent (was `z-ft-div`), LoRA first, closed loop at k = 4 and 10 (primary criterion at k = 4).
 - 2026-11-02 (before any run): decoder heads `raw` and `dct` (fixed inverse DCT, n_c fixed from demo reconstruction before training), head and d_z selected per size on validation L1; big-model side stays linear. H1 thresholds (100k, 0.90 / 0.70) approved by the author.
 - 2026-11-02 (before any run): precondition (1M decoder ≥ 50% of `slow-only`) confirmed by the author; all criteria now fixed. LIBERO target action format recorded in §9.
+- 2026-11-02 (before any run): fine-tuning recipe fixed by the author: native action formats with per-dataset quantile normalization and a robot / control-mode / rate condition in the prompt (π0.5 style), gripper sign aligned, contradictory datasets excluded, LIBERO up-weighted. Evidence: `cross_embodiment_brief.md`.
