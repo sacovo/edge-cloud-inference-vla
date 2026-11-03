@@ -49,19 +49,25 @@ def raw_state(obs):
 
 
 def consistency_check(env, task_key, suite):
-    """Max |difference| between the state built from sim obs and the HDF5 obs, on replayed demo states."""
+    """Max |difference| between the state built from sim obs (replayed `states[t + off]`) and the HDF5 obs at t, for
+    offsets -1, 0, +1: a small error that vanishes at one offset is a timing convention, not a conversion error."""
     f = S / "raw" / suite / f"{task_key}_demo.hdf5"
+    out = {"file": str(f)}
     with h5py.File(f, "r") as h:
         d = h["data/demo_0"]
-        ts = [0, len(d["states"]) // 2, len(d["states"]) - 1]
-        diffs = []
-        for t in ts:
-            obs = env.set_init_state(d["states"][t])
-            ref = np.concatenate([d["obs/ee_pos"][t], d["obs/ee_ori"][t], d["obs/gripper_states"][t]])
-            diffs.append(np.abs(raw_state(obs) - ref))
-    d = np.max(diffs, axis=0)
-    return {"file": str(f), "frames": ts, "max_abs_pos": float(d[:3].max()), "max_abs_axisangle": float(d[3:6].max()),
-            "max_abs_gripper": float(d[6:].max())}
+        T = len(d["states"])
+        ts = [1, T // 2, T - 2]
+        for off in (-1, 0, 1):
+            diffs = []
+            for t in ts:
+                obs = env.set_init_state(d["states"][t + off])
+                ref = np.concatenate([d["obs/ee_pos"][t], d["obs/ee_ori"][t], d["obs/gripper_states"][t]])
+                diffs.append(np.abs(raw_state(obs) - ref))
+            m = np.max(diffs, axis=0)
+            out[f"offset{off:+d}"] = {"pos": float(m[:3].max()), "axisangle": float(m[3:6].max()),
+                                      "gripper": float(m[6:].max())}
+    out["frames"] = ts
+    return out
 
 
 def load_policy(ckpt):
@@ -74,7 +80,7 @@ def load_policy(ckpt):
     head = base.model.paligemma_with_expert.paligemma.lm_head.weight.detach().clone()
     peft = PeftModel.from_pretrained(base, ckpt)
     trained_head = peft.base_model.model.model.paligemma_with_expert.paligemma.lm_head
-    w = getattr(trained_head, "modules_to_save", {}).get("default", trained_head).weight
+    w = (trained_head.modules_to_save["default"] if hasattr(trained_head, "modules_to_save") else trained_head).weight
     head_changed = float((w.detach().cpu() - head.cpu()).abs().max())
     policy = peft.base_model.model.to("cuda").eval()  # LoRA layers are injected in place
     pre, post = make_pre_post_processors(policy.config, pretrained_path=ckpt)
