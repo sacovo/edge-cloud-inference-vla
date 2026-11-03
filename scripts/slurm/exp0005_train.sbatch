@@ -17,7 +17,7 @@ MIX=$1; RUN=$2; shift 2
 cd "$SLURM_SUBMIT_DIR"; source scripts/slurm/vlm_env.sh
 nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
 INIT=$ECVLA_SCRATCH/exp0005/init/pi0fast_from_pi05base_$(basename "$MIX")
-[ -f "$INIT/model.safetensors" ] || $VLM_RUN python scripts/exp0005_make_init_ckpt.py --mixture "$MIX" --out "$INIT"
+[ -f "$INIT/policy_preprocessor.json" ] || $VLM_RUN python scripts/exp0005_make_init_ckpt.py --mixture "$MIX" --out "$INIT"
 echo "git=$(git rev-parse HEAD) mix=$MIX run=$RUN init=$INIT"
 $VLM_RUN python -m lerobot.scripts.lerobot_train \
   --dataset.repo_id=local/$(basename "$MIX") --dataset.root="$MIX" \

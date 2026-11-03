@@ -1,6 +1,6 @@
 """EXP-0005: write a LeRobot `pi0_fast` checkpoint whose VLM is `pi05_base`'s, as the fine-tuning start point.
 
-`lerobot_train --policy.path=<out>` then starts from it. Loading as in the stage-0 load check (manual, with a
+`lerobot_train --policy.path=<out>` then starts from it (weights, config and the pre/post-processor pipelines). Loading as in the stage-0 load check (manual, with a
 missing-key check, since `PI0FastPolicy.from_pretrained` only warns on errors); pi05's action expert is dropped.
 Features match the mixture (`mixture_stats.json`: state / action dims, two cameras); normalization is identity
 because the mixture is normalized per source.
@@ -26,6 +26,7 @@ def main():
     from lerobot.configs import FeatureType, NormalizationMode, PolicyFeature
     from lerobot.policies.pi0_fast.configuration_pi0_fast import PI0FastConfig
     from lerobot.policies.pi0_fast.modeling_pi0_fast import PI0FastPolicy
+    from lerobot.policies.pi0_fast.processor_pi0_fast import make_pi0_fast_pre_post_processors
     from safetensors.torch import load_file
     from transformers.utils import cached_file
 
@@ -43,6 +44,9 @@ def main():
     bad = [k for k in res.unexpected_keys if not k.removeprefix("model.").startswith(EXPERT)]
     assert not res.missing_keys and not bad, (res.missing_keys[:10], bad[:10])
     policy.save_pretrained(a.out)
+    pre, post = make_pi0_fast_pre_post_processors(cfg, dataset_stats=None)  # lerobot_train needs both with the weights
+    pre.save_pretrained(a.out)
+    post.save_pretrained(a.out)
     print(f"saved {a.out}: {len(policy.state_dict())} tensors, dropped {len(res.unexpected_keys)} action-expert tensors")
 
 
