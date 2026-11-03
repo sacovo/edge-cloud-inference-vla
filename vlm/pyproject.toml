@@ -12,6 +12,7 @@ dependencies = [
     "torch==2.11.0",
     "torchvision==0.26.0",
     "numpy",
+    "h5py",  # raw LIBERO HDF5s (stage-0 tests, data pipeline)
 ]
 
 [tool.uv]
