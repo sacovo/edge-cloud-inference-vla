@@ -50,8 +50,8 @@ def libero_episodes(cfg, max_eps):
                     "task": task,
                     "state": np.concatenate([d["obs/ee_pos"][:], d["obs/ee_ori"][:], d["obs/gripper_states"][:]], 1),
                     "action": d["actions"][:].astype(np.float32),
-                    IMG[0]: np.ascontiguousarray(d["obs/agentview_rgb"][:, ::-1, ::-1]),  # 180°, as openpi
-                    IMG[1]: np.ascontiguousarray(d["obs/eye_in_hand_rgb"][:, ::-1, ::-1]),
+                    IMG[0]: np.ascontiguousarray(d["obs/agentview_rgb"][:][:, ::-1, ::-1]),  # 180°, as openpi
+                    IMG[1]: np.ascontiguousarray(d["obs/eye_in_hand_rgb"][:][:, ::-1, ::-1]),
                 }
                 n += 1
 
