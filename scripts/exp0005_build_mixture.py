@@ -25,6 +25,7 @@ import h5py
 import numpy as np
 
 S = Path(os.environ.get("ECVLA_SCRATCH", "/scratch/sandro.covo/ecvla"))
+PROMPT = "{condition}; task: {task}"  # condition first: pi0_fast cuts the prompt at 200 tokens (long OXE instructions)
 FPS = 20  # one container rate; all sources so far are 20 Hz (mixed rates: open design question, README §9)
 IMG = ("observation.images.image", "observation.images.wrist_image")
 SOURCES = {
@@ -81,6 +82,16 @@ def lerobot_episodes(cfg, max_eps):
         }
 
 
+def clean_task(t):
+    """LeRobot OXE ports carry RLDS artifacts in the task text: `tf.Tensor(b"...", shape=(), dtype=string)` wrappers
+    and literal backslash-n sequences (seen in utaustin_mutex)."""
+    t = t.strip()
+    if t.startswith('tf.Tensor(b"') or t.startswith("tf.Tensor(b'"):
+        t = t[len('tf.Tensor(b"'):]
+        t = t[: t.rfind(", shape=")].rstrip("\"'")
+    return " ".join(t.replace("\\n", " ").replace("\n", " ").split())
+
+
 def quantiles(x):
     return np.quantile(x, 0.01, 0), np.quantile(x, 0.99, 0)
 
@@ -117,7 +128,10 @@ def main():
     sd = max(e["state"].shape[1] for eps in loaded.values() for e in eps)
     ad = max(e["action"].shape[1] for eps in loaded.values() for e in eps)
     h, w = next(iter(loaded.values()))[0][IMG[0]].shape[1:3]
-    stats = {"fps": FPS, "state_dim": sd, "action_dim": ad, "sources": {}}
+    stats = {"fps": FPS, "state_dim": sd, "action_dim": ad, "prompt_format": PROMPT, "sources": {}}
+    from transformers import AutoTokenizer
+
+    tok = AutoTokenizer.from_pretrained("google/paligemma-3b-pt-224")
     features = {
         "observation.state": {"dtype": "float32", "shape": (sd,), "names": None},
         "action": {"dtype": "float32", "shape": (ad,), "names": None},
@@ -132,12 +146,16 @@ def main():
         qs = quantiles(np.concatenate([e["state"] for e in eps]))
         qa = quantiles(np.concatenate([e["action"] for e in eps]))
         cond = f"robot: {cfg['robot']}; control: {cfg['control']}; {cfg['hz']} Hz"
+        texts = {e["task"]: PROMPT.format(condition=cond, task=clean_task(e["task"])) for e in eps}
+        # pi0_fast's prompt adds "Task: ..., State: <state_dim numbers>;" around this; report the task part's length
+        n_tok = max(len(tok(t)["input_ids"]) for t in texts.values())
         stats["sources"][name] = {
             "condition": cond, "episodes": len(eps), "frames": int(sum(len(e["action"]) for e in eps)),
             "state_dim": int(eps[0]["state"].shape[1]), "action_dim": int(eps[0]["action"].shape[1]),
             "state_q01": qs[0].tolist(), "state_q99": qs[1].tolist(),
             "action_q01": qa[0].tolist(), "action_q99": qa[1].tolist(), "grip_sign": cfg["grip_sign"],
-            "gripper": gripper_diagnostics(eps, cfg),
+            "gripper": gripper_diagnostics(eps, cfg), "max_task_tokens": n_tok,
+            "example_prompt": next(iter(texts.values())),
         }
         print(name, json.dumps(stats["sources"][name]["gripper"]), flush=True)
         for e in eps:
@@ -148,7 +166,7 @@ def main():
             act[:, cfg["grip_dim"]] *= cfg["grip_sign"]
             for t in range(len(act)):
                 ds.add_frame({"observation.state": st[t], "action": act[t], IMG[0]: e[IMG[0]][t],
-                              IMG[1]: e[IMG[1]][t], "task": f"{e['task']}; {cond}"})
+                              IMG[1]: e[IMG[1]][t], "task": texts[e["task"]]})
             ds.save_episode()
     ds.finalize()
     (out / "mixture_stats.json").write_text(json.dumps(stats, indent=1))

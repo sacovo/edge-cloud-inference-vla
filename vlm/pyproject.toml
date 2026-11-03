@@ -13,6 +13,10 @@ dependencies = [
     "torchvision==0.26.0",
     "numpy",
     "h5py",  # raw LIBERO HDF5s (stage-0 tests, data pipeline)
+    "hf-libero==0.1.4",  # slow-only sim checks; same pins as the main env
+    "robosuite==1.4.0",
+    "mujoco",
+    "pyyaml",
 ]
 
 [tool.uv]
