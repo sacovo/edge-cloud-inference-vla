@@ -8,7 +8,7 @@ name = "ecvla-vlm"
 version = "0.1.0"
 requires-python = ">=3.12,<3.13"
 dependencies = [
-    "lerobot[pi] @ https://github.com/huggingface/lerobot/archive/f5c9bc02137c331b009eccd44ece6f11b62187a8.tar.gz",
+    "lerobot[pi,training,peft] @ https://github.com/huggingface/lerobot/archive/f5c9bc02137c331b009eccd44ece6f11b62187a8.tar.gz",
     "torch==2.11.0",
     "torchvision==0.26.0",
     "numpy",
