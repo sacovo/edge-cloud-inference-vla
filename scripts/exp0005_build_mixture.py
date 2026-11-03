@@ -32,8 +32,9 @@ SOURCES = {
     "libero": {"loader": "libero", "suites": ("libero_spatial", "libero_object"), "robot": "franka",
                "control": "delta end effector", "hz": 20, "grip_dim": 6, "grip_sign": 1},
     # mutex gripper: 0/1 with 1 = open in the LeRobot port (debug build 2026-11-03: commanded 1 goes with a wide
-    # finger opening, corr 0.67 with state dim 7 = width), so flipped to LIBERO's +1 = close. Octo inverts this
-    # dataset too (oxe_standardization_transforms.py L781-796), but its convention is 1 = open.
+    # finger opening, corr 0.67 with state dim 7 = width), so flipped to LIBERO's +1 = close. Octo inverts the raw
+    # RLDS gripper to its own 1 = open (oxe_standardization_transforms.py L781-796), implying raw 1 = close: the
+    # LeRobot port may differ from the RLDS original (not checked). Trust the data of the copy actually used.
     "utaustin_mutex": {"loader": "lerobot", "repo": "lerobot/utaustin_mutex", "robot": "franka",
                        "control": "delta end effector", "hz": 20, "grip_dim": 6, "grip_sign": -1},
 }
