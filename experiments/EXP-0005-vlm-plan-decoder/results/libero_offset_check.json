@@ -1,0 +1,249 @@
+{
+ "summary": {
+  "off-1": {
+   "agentview_mad": 22.381176418728298,
+   "wrist_mad": 26.022362603081593,
+   "eef_pos_max": 0.008455945404768059
+  },
+  "off+0": {
+   "agentview_mad": 21.639795939127605,
+   "wrist_mad": 23.95201449924045,
+   "eef_pos_max": 0.004336183510895553
+  },
+  "off+1": {
+   "agentview_mad": 20.722040812174477,
+   "wrist_mad": 20.955020480685764,
+   "eef_pos_max": 0.00018321943339439221
+  }
+ },
+ "rows": [
+  {
+   "file": "pick_up_the_black_bowl_between_the_plate_and_the_ramekin_and_place_it_on_the_plate_demo.hdf5",
+   "t": 1,
+   "off-1": {
+    "agentview_mad": 3.7567342122395835,
+    "wrist_mad": 8.867919921875,
+    "eef_pos_max": 0.0013621906647878212
+   },
+   "off+0": {
+    "agentview_mad": 3.6515299479166665,
+    "wrist_mad": 7.696248372395833,
+    "eef_pos_max": 0.0008463017879731805
+   },
+   "off+1": {
+    "agentview_mad": 3.5006103515625,
+    "wrist_mad": 6.68084716796875,
+    "eef_pos_max": 4.175172861642373e-05
+   }
+  },
+  {
+   "file": "pick_up_the_black_bowl_between_the_plate_and_the_ramekin_and_place_it_on_the_plate_demo.hdf5",
+   "t": 49,
+   "off-1": {
+    "agentview_mad": 5.822184244791667,
+    "wrist_mad": 11.81195068359375,
+    "eef_pos_max": 0.010112049082199426
+   },
+   "off+0": {
+    "agentview_mad": 4.819539388020833,
+    "wrist_mad": 9.058858235677084,
+    "eef_pos_max": 0.005638703205773976
+   },
+   "off+1": {
+    "agentview_mad": 3.5287068684895835,
+    "wrist_mad": 1.8732706705729167,
+    "eef_pos_max": 0.0002535789708103531
+   }
+  },
+  {
+   "file": "pick_up_the_black_bowl_between_the_plate_and_the_ramekin_and_place_it_on_the_plate_demo.hdf5",
+   "t": 96,
+   "off-1": {
+    "agentview_mad": 8.722330729166666,
+    "wrist_mad": 12.836181640625,
+    "eef_pos_max": 0.019210721722012547
+   },
+   "off+0": {
+    "agentview_mad": 6.630147298177083,
+    "wrist_mad": 8.224507649739584,
+    "eef_pos_max": 0.009457411559804285
+   },
+   "off+1": {
+    "agentview_mad": 3.81707763671875,
+    "wrist_mad": 2.4045817057291665,
+    "eef_pos_max": 0.0003785655227022122
+   }
+  },
+  {
+   "file": "pick_up_the_black_bowl_from_table_center_and_place_it_on_the_plate_demo.hdf5",
+   "t": 1,
+   "off-1": {
+    "agentview_mad": 3.5688069661458335,
+    "wrist_mad": 7.360860188802083,
+    "eef_pos_max": 0.0007666847272609356
+   },
+   "off+0": {
+    "agentview_mad": 3.4514363606770835,
+    "wrist_mad": 6.628275553385417,
+    "eef_pos_max": 0.0006719523332033295
+   },
+   "off+1": {
+    "agentview_mad": 3.2956949869791665,
+    "wrist_mad": 5.493123372395833,
+    "eef_pos_max": 3.8030451062209814e-05
+   }
+  },
+  {
+   "file": "pick_up_the_black_bowl_from_table_center_and_place_it_on_the_plate_demo.hdf5",
+   "t": 51,
+   "off-1": {
+    "agentview_mad": 5.80316162109375,
+    "wrist_mad": 6.085774739583333,
+    "eef_pos_max": 0.013220623447073643
+   },
+   "off+0": {
+    "agentview_mad": 4.723673502604167,
+    "wrist_mad": 4.535257975260417,
+    "eef_pos_max": 0.0068255047489284015
+   },
+   "off+1": {
+    "agentview_mad": 3.28759765625,
+    "wrist_mad": 1.73992919921875,
+    "eef_pos_max": 0.000288142529046298
+   }
+  },
+  {
+   "file": "pick_up_the_black_bowl_from_table_center_and_place_it_on_the_plate_demo.hdf5",
+   "t": 101,
+   "off-1": {
+    "agentview_mad": 4.100301106770833,
+    "wrist_mad": 5.221415201822917,
+    "eef_pos_max": 0.0005264112918765829
+   },
+   "off+0": {
+    "agentview_mad": 3.66912841796875,
+    "wrist_mad": 4.546732584635417,
+    "eef_pos_max": 0.00032719401037520357
+   },
+   "off+1": {
+    "agentview_mad": 3.2516682942708335,
+    "wrist_mad": 1.64434814453125,
+    "eef_pos_max": 3.034698880188813e-05
+   }
+  },
+  {
+   "file": "pick_up_the_alphabet_soup_and_place_it_in_the_basket_demo.hdf5",
+   "t": 1,
+   "off-1": {
+    "agentview_mad": 39.983256022135414,
+    "wrist_mad": 48.566304524739586,
+    "eef_pos_max": 0.012613792771750058
+   },
+   "off+0": {
+    "agentview_mad": 39.36468505859375,
+    "wrist_mad": 45.379130045572914,
+    "eef_pos_max": 0.006631303225014054
+   },
+   "off+1": {
+    "agentview_mad": 38.702616373697914,
+    "wrist_mad": 40.713480631510414,
+    "eef_pos_max": 0.00028141782888446015
+   }
+  },
+  {
+   "file": "pick_up_the_alphabet_soup_and_place_it_in_the_basket_demo.hdf5",
+   "t": 74,
+   "off-1": {
+    "agentview_mad": 40.253519694010414,
+    "wrist_mad": 48.126810709635414,
+    "eef_pos_max": 0.01951954144583193
+   },
+   "off+0": {
+    "agentview_mad": 39.434590657552086,
+    "wrist_mad": 44.561625162760414,
+    "eef_pos_max": 0.009661140621653436
+   },
+   "off+1": {
+    "agentview_mad": 38.380696614583336,
+    "wrist_mad": 39.940633138020836,
+    "eef_pos_max": 0.00039298158412423567
+   }
+  },
+  {
+   "file": "pick_up_the_alphabet_soup_and_place_it_in_the_basket_demo.hdf5",
+   "t": 146,
+   "off-1": {
+    "agentview_mad": 37.749654134114586,
+    "wrist_mad": 34.885111490885414,
+    "eef_pos_max": 0.0016521293427111975
+   },
+   "off+0": {
+    "agentview_mad": 37.489664713541664,
+    "wrist_mad": 33.3375244140625,
+    "eef_pos_max": 0.0007641654646824867
+   },
+   "off+1": {
+    "agentview_mad": 37.223795572916664,
+    "wrist_mad": 32.114095052083336,
+    "eef_pos_max": 2.8710735175990765e-05
+   }
+  },
+  {
+   "file": "pick_up_the_bbq_sauce_and_place_it_in_the_basket_demo.hdf5",
+   "t": 1,
+   "off-1": {
+    "agentview_mad": 39.433614095052086,
+    "wrist_mad": 43.84967041015625,
+    "eef_pos_max": 0.0021127018234392003
+   },
+   "off+0": {
+    "agentview_mad": 38.982584635416664,
+    "wrist_mad": 42.021016438802086,
+    "eef_pos_max": 0.0011083703545449464
+   },
+   "off+1": {
+    "agentview_mad": 38.826517740885414,
+    "wrist_mad": 40.915181477864586,
+    "eef_pos_max": 4.6366451293300415e-05
+   }
+  },
+  {
+   "file": "pick_up_the_bbq_sauce_and_place_it_in_the_basket_demo.hdf5",
+   "t": 67,
+   "off-1": {
+    "agentview_mad": 40.735453287760414,
+    "wrist_mad": 44.700948079427086,
+    "eef_pos_max": 0.015635824474260013
+   },
+   "off+0": {
+    "agentview_mad": 39.368570963541664,
+    "wrist_mad": 43.380167643229164,
+    "eef_pos_max": 0.008188757083925358
+   },
+   "off+1": {
+    "agentview_mad": 37.220316569010414,
+    "wrist_mad": 41.650227864583336,
+    "eef_pos_max": 0.000350779739250906
+   }
+  },
+  {
+   "file": "pick_up_the_bbq_sauce_and_place_it_in_the_basket_demo.hdf5",
+   "t": 132,
+   "off-1": {
+    "agentview_mad": 38.645100911458336,
+    "wrist_mad": 39.955403645833336,
+    "eef_pos_max": 0.0047386740640133485
+   },
+   "off+0": {
+    "agentview_mad": 38.092000325520836,
+    "wrist_mad": 38.054829915364586,
+    "eef_pos_max": 0.0019133977348679831
+   },
+   "off+1": {
+    "agentview_mad": 37.629191080729164,
+    "wrist_mad": 36.29052734375,
+    "eef_pos_max": 6.79606709644287e-05
+   }
+  }
+ ]
+}
