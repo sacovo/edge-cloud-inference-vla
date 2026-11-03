@@ -39,6 +39,7 @@ PROMPT = "{condition}; task: {task}"
 FPS = 20  # container rate only; each source keeps its native steps (README §3)
 DROID_FILE_STRIDE = 20  # every 20th video file of DROID (~300 episodes each) -> ~5k episodes
 EEF = "delta end effector"
+SKIPPED: dict[str, list[int]] = {}  # per source: episodes whose video segment cannot be decoded (port data errors)
 SOURCES = {
     # name: loader, cameras (main, wrist), condition fields, gripper action dim
     "libero": {"loader": "libero", "suites": ("libero_spatial", "libero_object"), "robot": "franka", "control": EEF,
@@ -173,7 +174,7 @@ def lerobot_columns(cfg, max_eps):
 
 def lerobot_episodes(cfg, max_eps):
     from lerobot.datasets.lerobot_dataset import LeRobotDataset
-    from lerobot.datasets.video_utils import decode_video_frames
+    from lerobot.datasets.video_utils import FrameTimestampError, decode_video_frames
 
     meta, eps = lerobot_selection(cfg, max_eps)
     ds = LeRobotDataset(cfg["repo"], episodes=eps, video_backend="pyav")
@@ -187,12 +188,17 @@ def lerobot_episodes(cfg, max_eps):
         ts = np.asarray(rows["timestamp"], float).tolist()
         epm = ds.meta.episodes[int(e)]
         frames = []
-        for cam in cfg["cams"]:
-            key = f"observation.images.{cam}"
-            path = ds.root / ds.meta.get_video_file_path(int(e), key)
-            off = epm[f"videos/{key}/from_timestamp"]
-            v = decode_video_frames(path, [off + t for t in ts], ds.tolerance_s, "pyav", return_uint8=True)
-            frames.append(np.stack([resize_pad(x.permute(1, 2, 0).numpy()) for x in v]))
+        try:
+            for cam in cfg["cams"]:
+                key = f"observation.images.{cam}"
+                path = ds.root / ds.meta.get_video_file_path(int(e), key)
+                off = epm[f"videos/{key}/from_timestamp"]
+                v = decode_video_frames(path, [off + t for t in ts], ds.tolerance_s, "pyav", return_uint8=True)
+                frames.append(np.stack([resize_pad(x.permute(1, 2, 0).numpy()) for x in v]))
+        except FrameTimestampError:  # the port's video does not cover the episode (berkeley_ur5 ep ~300); LeRobot
+            SKIPPED.setdefault(cfg["repo"], []).append(int(e))  # advises ignoring such items
+            print(f"{cfg['repo']}: episode {e} skipped (video does not cover its timestamps)", flush=True)
+            continue
         yield {"task": task_text(meta, rows["task_index"][0]), "state": np.asarray(rows["observation.state"], np.float32),
                "action": np.asarray(rows["action"], np.float32), IMG[0]: frames[0], IMG[1]: frames[1]}
 
@@ -292,6 +298,7 @@ def main():
             if n % 50 == 0:
                 print(f"{name}: {n} episodes written ({time.time() - t0:.0f} s)", flush=True)
         s["episodes_written"] = n
+        s["episodes_skipped_video"] = SKIPPED.get(cfg.get("repo"), [])
         print(f"{name}: done, {n} episodes ({time.time() - t0:.0f} s)", flush=True)
     ds.finalize()
     (out / "mixture_stats.json").write_text(json.dumps(stats, indent=1))
