@@ -1,5 +1,6 @@
 #!/bin/bash
-# EXP-0005: build the FAST fine-tuning mixture (scripts/exp0005_build_mixture.py) as one LeRobot dataset. CPU.
+# EXP-0005: build the FAST fine-tuning mixture (scripts/exp0005_build_mixture.py) as one LeRobot dataset.
+# The full build renders LIBERO (EGL): run it on a GPU node (-M cluster -p performance --gres=gpu:1); --check is CPU-only.
 # Usage: sbatch [-p cpu-daily -t 08:00:00] scripts/slurm/exp0005_build_mixture.sbatch --sources libero utaustin_mutex \
 #          --out /scratch/sandro.covo/ecvla/exp0005/datasets/<name> [--max-episodes N]
 #   (absolute --out: extra args are not expanded inside the job)
@@ -12,4 +13,4 @@
 #SBATCH --output=logs/%x_%j.out
 set -euo pipefail
 cd "$SLURM_SUBMIT_DIR"; source scripts/slurm/vlm_env.sh
-$VLM_RUN python scripts/exp0005_build_mixture.py "$@"
+PYTHONPATH=src $VLM_RUN python scripts/exp0005_build_mixture.py "$@"
