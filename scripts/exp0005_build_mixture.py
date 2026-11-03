@@ -1,85 +1,65 @@
 """EXP-0005: build the FAST fine-tuning mixture as one LeRobot dataset (README §3 recipe).
 
-Per source dataset: native action and state formats, normalized per dimension to [-1, 1] by that dataset's own
-1% / 99% quantiles (clipped), zero-padded to the mixture's widest state / action; both cameras at native resolution
-(pi0_fast resizes with padding); the task text carries the condition, e.g.
-  "pick up the bowl; robot: franka; control: delta end effector; 20 Hz".
-LeRobot's normalizer is then identity (multi-dataset stats would be merged into one set otherwise). Per-source
-quantiles, dims and conventions go to <out>/mixture_stats.json (needed to de-normalize at evaluation).
+Per source: native action and state formats, each dimension normalized to [-1, 1] by that source's own 1% / 99%
+quantiles (clipped), zero-padded to the mixture's widest state / action; main + wrist camera resized with padding to
+224 px and stored as video; the task text carries the condition first (pi0_fast cuts prompts at 200 tokens), e.g.
+  "robot: franka; control: delta end effector; 20 Hz; task: pick up the bowl".
+Each source stays at its native rate (a chunk is counted in steps; the rate is in the prompt). LeRobot's normalizer is
+then identity. Per-source quantiles, signs and dims go to <out>/mixture_stats.json (needed to de-normalize).
 
-Sources (`SOURCES`): LIBERO raw HDF5s (openpi conventions: 180° images, state = eef pos + axis-angle + gripper qpos)
-and LeRobot hub ports of OXE datasets. Before trusting a source, check the printed gripper diagnostics: the gripper
-action is aligned to LIBERO's convention (-1 open, +1 close) via `grip_sign`.
+LIBERO is re-rendered in our sim from the recorded states (`exp0005_common`, also used by the slow-only check): the
+recorded HDF5 obs are one step after the state the action was taken in, and our sim renders Object scenes darker and
+with robosuite's gripper-site marker, so recorded images would differ from what the policy sees in closed loop.
+OXE sources come from their LeRobot hub ports; each episode's video segment is decoded in one pass (pyav).
 
-Runs in the VLM env:  uv run --project vlm python scripts/exp0005_build_mixture.py --sources libero utaustin_mutex \
-                        --out $ECVLA_SCRATCH/exp0005/datasets/mix_debug [--max-episodes 50]
+Gripper sign: chosen so that an episode's first gripper command (the gripper starts open) maps to LIBERO's -1 (open);
+`--check` prints the evidence per source before anything is written.
+
+Modes (VLM env; the full build needs EGL for LIBERO, i.e. a GPU node):
+  uv run --project vlm python scripts/exp0005_build_mixture.py --check --sources ... --out <dir>   (stats only)
+  PYTHONPATH=src uv run --project vlm python scripts/exp0005_build_mixture.py --sources ... --out <dir>
 """
 
 import argparse
 import glob
 import json
 import os
+import sys
+import time
 from pathlib import Path
 
 import h5py
 import numpy as np
 
+sys.path.insert(0, str(Path(__file__).parent))
+from exp0005_common import IMG, IMG_SIZE, libero_images, libero_state, resize_pad  # noqa: E402
+
 S = Path(os.environ.get("ECVLA_SCRATCH", "/scratch/sandro.covo/ecvla"))
-PROMPT = "{condition}; task: {task}"  # condition first: pi0_fast cuts the prompt at 200 tokens (long OXE instructions)
-FPS = 20  # one container rate; all sources so far are 20 Hz (mixed rates: open design question, README §9)
-IMG = ("observation.images.image", "observation.images.wrist_image")
+PROMPT = "{condition}; task: {task}"
+FPS = 20  # container rate only; each source keeps its native steps (README §3)
+DROID_FILE_STRIDE = 20  # every 20th video file of DROID (~300 episodes each) -> ~5k episodes
+EEF = "delta end effector"
 SOURCES = {
-    # name: loader, condition fields, gripper sign (multiplies the normalized gripper action), rate
-    "libero": {"loader": "libero", "suites": ("libero_spatial", "libero_object"), "robot": "franka",
-               "control": "delta end effector", "hz": 20, "grip_dim": 6, "grip_sign": 1},
-    # mutex gripper: 0/1 with 1 = open in the LeRobot port (debug build 2026-11-03: commanded 1 goes with a wide
-    # finger opening, corr 0.67 with state dim 7 = width), so flipped to LIBERO's +1 = close. Octo inverts the raw
-    # RLDS gripper to its own 1 = open (oxe_standardization_transforms.py L781-796), implying raw 1 = close: the
-    # LeRobot port may differ from the RLDS original (not checked). Trust the data of the copy actually used.
-    "utaustin_mutex": {"loader": "lerobot", "repo": "lerobot/utaustin_mutex", "robot": "franka",
-                       "control": "delta end effector", "hz": 20, "grip_dim": 6, "grip_sign": -1},
+    # name: loader, cameras (main, wrist), condition fields, gripper action dim
+    "libero": {"loader": "libero", "suites": ("libero_spatial", "libero_object"), "robot": "franka", "control": EEF,
+               "hz": 20, "grip_dim": 6},
+    "utaustin_mutex": {"repo": "lerobot/utaustin_mutex", "cams": ("image", "wrist_image"), "robot": "franka",
+                       "control": EEF, "hz": 20, "grip_dim": 6},
+    "austin_sirius": {"repo": "lerobot/austin_sirius_dataset", "cams": ("image", "wrist_image"), "robot": "franka",
+                      "control": EEF, "hz": 20, "grip_dim": 6},
+    "austin_sailor": {"repo": "lerobot/austin_sailor_dataset", "cams": ("image", "wrist_image"), "robot": "franka",
+                      "control": EEF, "hz": 20, "grip_dim": 6},
+    "stanford_hydra": {"repo": "lerobot/stanford_hydra_dataset", "cams": ("image", "wrist_image"), "robot": "franka",
+                       "control": EEF, "hz": 10, "grip_dim": 6},
+    "berkeley_fanuc": {"repo": "lerobot/berkeley_fanuc_manipulation", "cams": ("image", "wrist_image"),
+                       "robot": "fanuc", "control": EEF, "hz": 10, "grip_dim": 6},
+    "berkeley_ur5": {"repo": "lerobot/berkeley_autolab_ur5", "cams": ("image", "hand_image"), "robot": "ur5",
+                     "control": EEF, "hz": 5, "grip_dim": 6},
+    "iamlab_cmu": {"repo": "lerobot/iamlab_cmu_pickup_insert", "cams": ("image", "wrist_image"), "robot": "franka",
+                   "control": "absolute end effector", "hz": 20, "grip_dim": 6},
+    "droid": {"repo": "lerobot/droid_1.0.1", "cams": ("exterior_1_left", "wrist_left"), "robot": "franka",
+              "control": "joint position", "hz": 15, "grip_dim": 7, "file_stride": DROID_FILE_STRIDE},
 }
-
-
-def libero_episodes(cfg, max_eps):
-    files = sorted(f for su in cfg["suites"] for f in glob.glob(str(S / "raw" / su / "*.hdf5")))
-    n = 0
-    for f in files:
-        with h5py.File(f, "r") as h:
-            task = json.loads(h["data"].attrs["problem_info"])["language_instruction"]
-            for name in sorted(h["data"], key=lambda s: int(s.split("_")[1])):
-                if max_eps and n >= max_eps:
-                    return
-                d = h["data"][name]
-                yield {
-                    "task": task,
-                    "state": np.concatenate([d["obs/ee_pos"][:], d["obs/ee_ori"][:], d["obs/gripper_states"][:]], 1),
-                    "action": d["actions"][:].astype(np.float32),
-                    IMG[0]: np.ascontiguousarray(d["obs/agentview_rgb"][:][:, ::-1, ::-1]),  # 180°, as openpi
-                    IMG[1]: np.ascontiguousarray(d["obs/eye_in_hand_rgb"][:][:, ::-1, ::-1]),
-                }
-                n += 1
-
-
-def lerobot_episodes(cfg, max_eps):
-    from lerobot.datasets.lerobot_dataset import LeRobotDataset
-
-    meta_ds = LeRobotDataset(cfg["repo"], download_videos=False)
-    n_eps = meta_ds.meta.total_episodes if not max_eps else min(max_eps, meta_ds.meta.total_episodes)
-    ds = LeRobotDataset(cfg["repo"], episodes=list(range(n_eps)))
-    ep = ds.hf_dataset["episode_index"]
-    ep = np.asarray([int(e) for e in ep])
-    for e in range(n_eps):
-        idx = np.nonzero(ep == e)[0]
-        frames = [ds[int(i)] for i in idx]
-        to_img = lambda x: (x.permute(1, 2, 0).numpy() * 255).round().astype(np.uint8)  # noqa: E731
-        yield {
-            "task": frames[0]["task"],
-            "state": np.stack([f["observation.state"].numpy() for f in frames]).astype(np.float32),
-            "action": np.stack([f["action"].numpy() for f in frames]).astype(np.float32),
-            IMG[0]: np.stack([to_img(f[IMG[0]]) for f in frames]),
-            IMG[1]: np.stack([to_img(f[IMG[1]]) for f in frames]),
-        }
 
 
 def clean_task(t):
@@ -92,6 +72,10 @@ def clean_task(t):
     return " ".join(t.replace("\\n", " ").replace("\n", " ").split())
 
 
+def condition(cfg):
+    return f"robot: {cfg['robot']}; control: {cfg['control']}; {cfg['hz']} Hz"
+
+
 def quantiles(x):
     return np.quantile(x, 0.01, 0), np.quantile(x, 0.99, 0)
 
@@ -101,76 +85,209 @@ def normalize(x, q):
     return np.clip(2 * (x - lo) / np.maximum(hi - lo, 1e-6) - 1, -1, 1).astype(np.float32)
 
 
-def gripper_diagnostics(eps, cfg):
-    """Gripper action values and their correlation with the next-step change of each state dim (sign check)."""
-    a = np.concatenate([e["action"][:-1, cfg["grip_dim"]] for e in eps])
-    ds = np.concatenate([np.diff(e["state"], axis=0) for e in eps])
-    corr = [float(np.corrcoef(a, ds[:, j])[0, 1]) if ds[:, j].std() > 0 else 0.0 for j in range(ds.shape[1])]
-    vals, counts = np.unique(np.round(a, 2), return_counts=True)
-    top = sorted(zip(counts.tolist(), vals.tolist()), reverse=True)[:6]
-    return {"grip_action_top_values": [[v, c] for c, v in top], "corr_with_next_state_change": corr}
+# ---------------------------------------------------------------- LIBERO (re-rendered from the recorded states)
+
+def libero_files(cfg):
+    return sorted(f for su in cfg["suites"] for f in glob.glob(str(S / "raw" / su / "*.hdf5")))
+
+
+def demo_names(h, max_eps):
+    return sorted(h["data"], key=lambda s: int(s.split("_")[1]))[: max_eps or None]
+
+
+def libero_columns(cfg, max_eps):
+    """(state, action, task) per demo from the HDF5s, for the stats pass. The recorded proprio is one step later than
+    the re-rendered one, which does not matter for the quantiles."""
+    out = []
+    for f in libero_files(cfg):
+        with h5py.File(f, "r") as h:
+            task = json.loads(h["data"].attrs["problem_info"])["language_instruction"]
+            for name in demo_names(h, max_eps):
+                d = h["data"][name]
+                st = np.concatenate([d["obs/ee_pos"][:], d["obs/ee_ori"][:], d["obs/gripper_states"][:]], 1)
+                out.append((st.astype(np.float32), d["actions"][:].astype(np.float32), task))
+    return out
+
+
+def libero_episodes(cfg, max_eps):
+    from libero.libero import get_libero_path
+
+    from ecvla.libero_env import make_env
+
+    for f in libero_files(cfg):
+        suite = Path(f).parent.name
+        bddl = os.path.join(get_libero_path("bddl_files"), suite, Path(f).stem.removesuffix("_demo") + ".bddl")
+        env = make_env(bddl, image_size=IMG_SIZE, cameras=True)
+        with h5py.File(f, "r") as h:
+            task = json.loads(h["data"].attrs["problem_info"])["language_instruction"]
+            for name in demo_names(h, max_eps):
+                d = h["data"][name]
+                st, main, wrist = [], [], []
+                for s in d["states"][:]:
+                    obs = env.set_init_state(s)
+                    st.append(libero_state(obs))
+                    a, w = libero_images(obs)
+                    main.append(a)
+                    wrist.append(w)
+                yield {"task": task, "state": np.stack(st), "action": d["actions"][:].astype(np.float32),
+                       IMG[0]: np.stack(main), IMG[1]: np.stack(wrist)}
+        env.close()
+
+
+# ---------------------------------------------------------------- LeRobot hub ports
+
+def lerobot_selection(cfg, max_eps):
+    from lerobot.datasets.lerobot_dataset import LeRobotDatasetMetadata
+
+    meta = LeRobotDatasetMetadata(cfg["repo"])
+    n = meta.total_episodes
+    if "file_stride" in cfg:  # whole video files, spread over the dataset
+        fidx = np.asarray(meta.episodes[f"videos/observation.images.{cfg['cams'][0]}/file_index"])
+        chosen = set(sorted(set(fidx.tolist()))[:: cfg["file_stride"]])
+        eps = [i for i in range(n) if fidx[i] in chosen]
+    else:
+        eps = list(range(n))
+    return meta, eps[: max_eps or None]
+
+
+def task_text(meta, task_index):
+    """meta.tasks: DataFrame indexed by the task string, with a `task_index` column."""
+    return meta.tasks.index[meta.tasks["task_index"] == int(task_index)][0]
+
+
+def lerobot_columns(cfg, max_eps):
+    from lerobot.datasets.lerobot_dataset import LeRobotDataset
+
+    meta, eps = lerobot_selection(cfg, max_eps)
+    ds = LeRobotDataset(cfg["repo"], episodes=eps, download_videos=False)
+    hf = ds.hf_dataset.with_format("numpy")
+    ep = np.asarray(hf["episode_index"])
+    st, ac, ti = np.stack(hf["observation.state"]), np.stack(hf["action"]), np.asarray(hf["task_index"])
+    out = []
+    for e in eps:
+        m = ep == e
+        if m.any():
+            out.append((st[m].astype(np.float32), ac[m].astype(np.float32), task_text(meta, ti[m][0])))
+    return out
+
+
+def lerobot_episodes(cfg, max_eps):
+    from lerobot.datasets.lerobot_dataset import LeRobotDataset
+    from lerobot.datasets.video_utils import decode_video_frames
+
+    meta, eps = lerobot_selection(cfg, max_eps)
+    ds = LeRobotDataset(cfg["repo"], episodes=eps, video_backend="pyav")
+    hf = ds.hf_dataset.with_format("numpy")
+    ep_col = np.asarray(hf["episode_index"])
+    for e in eps:
+        idx = np.nonzero(ep_col == e)[0]
+        if not len(idx):
+            continue
+        rows = hf[idx.tolist()]
+        ts = np.asarray(rows["timestamp"], float).tolist()
+        epm = ds.meta.episodes[int(e)]
+        frames = []
+        for cam in cfg["cams"]:
+            key = f"observation.images.{cam}"
+            path = ds.root / ds.meta.get_video_file_path(int(e), key)
+            off = epm[f"videos/{key}/from_timestamp"]
+            v = decode_video_frames(path, [off + t for t in ts], ds.tolerance_s, "pyav", return_uint8=True)
+            frames.append(np.stack([resize_pad(x.permute(1, 2, 0).numpy()) for x in v]))
+        yield {"task": task_text(meta, rows["task_index"][0]), "state": np.asarray(rows["observation.state"], np.float32),
+               "action": np.asarray(rows["action"], np.float32), IMG[0]: frames[0], IMG[1]: frames[1]}
+
+
+# ---------------------------------------------------------------- stats, signs, writing
+
+def source_stats(cfg, cols, tok):
+    st = np.concatenate([c[0] for c in cols])
+    ac = np.concatenate([c[1] for c in cols])
+    qs, qa = quantiles(st), quantiles(ac)
+    g = cfg["grip_dim"]
+    first = np.array([normalize(c[1][:1], qa)[0, g] for c in cols])  # the gripper starts open
+    cond = condition(cfg)
+    texts = [PROMPT.format(condition=cond, task=clean_task(c[2])) for c in cols]
+    vals, counts = np.unique(np.round(ac[:, g], 2), return_counts=True)
+    return {
+        "condition": cond, "episodes": len(cols), "frames": int(len(ac)), "state_dim": int(st.shape[1]),
+        "action_dim": int(ac.shape[1]), "state_q01": qs[0].tolist(), "state_q99": qs[1].tolist(),
+        "action_q01": qa[0].tolist(), "action_q99": qa[1].tolist(), "grip_dim": g,
+        "grip_sign": -1 if first.mean() > 0 else 1,
+        "grip_first_frame_normalized_mean": float(first.mean()),
+        "grip_first_frame_share_positive": float((first > 0).mean()),
+        "grip_action_top_values": [[float(v), int(c)] for c, v in sorted(zip(counts, vals), reverse=True)[:5]],
+        "empty_tasks": int(sum(not clean_task(c[2]) for c in cols)),
+        "max_task_tokens": max(len(tok(t)["input_ids"]) for t in texts), "example_prompt": texts[0],
+    }
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--sources", nargs="+", required=True, choices=list(SOURCES))
     ap.add_argument("--out", required=True)
-    ap.add_argument("--max-episodes", type=int, default=0, help="per source; 0 = all")
+    ap.add_argument("--max-episodes", type=int, default=0, help="per source (per LIBERO file); 0 = all")
+    ap.add_argument("--check", action="store_true", help="stats, gripper signs and prompt lengths only")
     a = ap.parse_args()
-    from lerobot.datasets.lerobot_dataset import LeRobotDataset
-
-    loaded = {}
-    for name in a.sources:
-        cfg = SOURCES[name]
-        gen = libero_episodes if cfg["loader"] == "libero" else lerobot_episodes
-        loaded[name] = list(gen(cfg, a.max_episodes))
-        print(f"{name}: {len(loaded[name])} episodes, {sum(len(e['action']) for e in loaded[name])} frames", flush=True)
-    sd = max(e["state"].shape[1] for eps in loaded.values() for e in eps)
-    ad = max(e["action"].shape[1] for eps in loaded.values() for e in eps)
-    h, w = next(iter(loaded.values()))[0][IMG[0]].shape[1:3]
-    stats = {"fps": FPS, "state_dim": sd, "action_dim": ad, "prompt_format": PROMPT, "sources": {}}
     from transformers import AutoTokenizer
 
     tok = AutoTokenizer.from_pretrained("google/paligemma-3b-pt-224")
+    out = Path(a.out)
+    out.mkdir(parents=True, exist_ok=True)
+    stats = {"fps": FPS, "img_size": IMG_SIZE, "prompt_format": PROMPT, "sources": {}}
+    for name in a.sources:
+        cfg, t0 = SOURCES[name], time.time()
+        cols = (libero_columns if cfg.get("loader") == "libero" else lerobot_columns)(cfg, a.max_episodes)
+        s = stats["sources"][name] = source_stats(cfg, cols, tok)
+        print(f"{name}: {s['episodes']} eps, {s['frames']} frames, state {s['state_dim']}, action {s['action_dim']}, "
+              f"grip sign {s['grip_sign']} (first-frame mean {s['grip_first_frame_normalized_mean']:+.2f}, "
+              f"share>0 {s['grip_first_frame_share_positive']:.2f}), max tokens {s['max_task_tokens']}, "
+              f"empty tasks {s['empty_tasks']} ({time.time() - t0:.0f} s)", flush=True)
+    stats["state_dim"] = max(s["state_dim"] for s in stats["sources"].values())
+    stats["action_dim"] = max(s["action_dim"] for s in stats["sources"].values())
+    (out / ("mixture_check.json" if a.check else "mixture_stats.json")).write_text(json.dumps(stats, indent=1))
+    if a.check:
+        print("check written", out / "mixture_check.json")
+        return
+
+    from lerobot.datasets.lerobot_dataset import LeRobotDataset
+
+    sd, ad = stats["state_dim"], stats["action_dim"]
     features = {
         "observation.state": {"dtype": "float32", "shape": (sd,), "names": None},
         "action": {"dtype": "float32", "shape": (ad,), "names": None},
-        **{k: {"dtype": "image", "shape": (h, w, 3), "names": ["height", "width", "channel"]} for k in IMG},
+        **{k: {"dtype": "video", "shape": (IMG_SIZE, IMG_SIZE, 3), "names": ["height", "width", "channel"]}
+           for k in IMG},
     }
-    out = Path(a.out)
-    ds = LeRobotDataset.create(repo_id=f"local/{out.name}", root=out, fps=FPS, features=features,
-                               robot_type="mixed", use_videos=False)
-    for name, eps in loaded.items():
-        cfg = SOURCES[name]
-        assert all(e[IMG[0]].shape[1:3] == (h, w) for e in eps), f"{name}: image size differs from {(h, w)}"
-        qs = quantiles(np.concatenate([e["state"] for e in eps]))
-        qa = quantiles(np.concatenate([e["action"] for e in eps]))
-        cond = f"robot: {cfg['robot']}; control: {cfg['control']}; {cfg['hz']} Hz"
-        texts = {e["task"]: PROMPT.format(condition=cond, task=clean_task(e["task"])) for e in eps}
-        # pi0_fast's prompt adds "Task: ..., State: <state_dim numbers>;" around this; report the task part's length
-        n_tok = max(len(tok(t)["input_ids"]) for t in texts.values())
-        stats["sources"][name] = {
-            "condition": cond, "episodes": len(eps), "frames": int(sum(len(e["action"]) for e in eps)),
-            "state_dim": int(eps[0]["state"].shape[1]), "action_dim": int(eps[0]["action"].shape[1]),
-            "state_q01": qs[0].tolist(), "state_q99": qs[1].tolist(),
-            "action_q01": qa[0].tolist(), "action_q99": qa[1].tolist(), "grip_sign": cfg["grip_sign"],
-            "gripper": gripper_diagnostics(eps, cfg), "max_task_tokens": n_tok,
-            "example_prompt": next(iter(texts.values())),
-        }
-        print(name, json.dumps(stats["sources"][name]["gripper"]), flush=True)
-        for e in eps:
+    ds = LeRobotDataset.create(repo_id=f"local/{out.name}", root=out / "data", fps=FPS, features=features,
+                               robot_type="mixed", use_videos=True)
+    for name in a.sources:
+        cfg, s = SOURCES[name], stats["sources"][name]
+        qs = (np.array(s["state_q01"]), np.array(s["state_q99"]))
+        qa = (np.array(s["action_q01"]), np.array(s["action_q99"]))
+        gen = libero_episodes if cfg.get("loader") == "libero" else lerobot_episodes
+        n, t0 = 0, time.time()
+        for e in gen(cfg, a.max_episodes):
+            task = clean_task(e["task"])
+            if not task:
+                continue
             st = np.zeros((len(e["state"]), sd), np.float32)
             st[:, : e["state"].shape[1]] = normalize(e["state"], qs)
             act = np.zeros((len(e["action"]), ad), np.float32)
             act[:, : e["action"].shape[1]] = normalize(e["action"], qa)
-            act[:, cfg["grip_dim"]] *= cfg["grip_sign"]
+            act[:, cfg["grip_dim"]] *= s["grip_sign"]
+            text = PROMPT.format(condition=s["condition"], task=task)
             for t in range(len(act)):
                 ds.add_frame({"observation.state": st[t], "action": act[t], IMG[0]: e[IMG[0]][t],
-                              IMG[1]: e[IMG[1]][t], "task": texts[e["task"]]})
+                              IMG[1]: e[IMG[1]][t], "task": text})
             ds.save_episode()
+            n += 1
+            if n % 50 == 0:
+                print(f"{name}: {n} episodes written ({time.time() - t0:.0f} s)", flush=True)
+        s["episodes_written"] = n
+        print(f"{name}: done, {n} episodes ({time.time() - t0:.0f} s)", flush=True)
     ds.finalize()
     (out / "mixture_stats.json").write_text(json.dumps(stats, indent=1))
-    print("done", out, {k: (v["episodes"], v["frames"]) for k, v in stats["sources"].items()})
+    print("done", out)
 
 
 if __name__ == "__main__":

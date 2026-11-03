@@ -20,7 +20,7 @@ INIT=$ECVLA_SCRATCH/exp0005/init/pi0fast_from_pi05base_$(basename "$MIX")
 [ -f "$INIT/policy_preprocessor.json" ] || $VLM_RUN python scripts/exp0005_make_init_ckpt.py --mixture "$MIX" --out "$INIT"
 echo "git=$(git rev-parse HEAD) mix=$MIX run=$RUN init=$INIT"
 $VLM_RUN python -m lerobot.scripts.lerobot_train \
-  --dataset.repo_id=local/$(basename "$MIX") --dataset.root="$MIX" \
+  --dataset.repo_id=local/$(basename "$MIX") --dataset.root="$MIX/data" \
   --policy.path="$INIT" --policy.push_to_hub=false --policy.device=cuda \
   --peft.method_type=LORA --peft.r=16 \
   --peft.target_modules='.*language_model.*\.(q_proj|k_proj|v_proj|o_proj|gate_proj|up_proj|down_proj)' \

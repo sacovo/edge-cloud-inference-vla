@@ -1,14 +1,11 @@
 """EXP-0005 `slow-only` check: the fine-tuned `pi0_fast` acts alone in the LIBERO sim, executing its decoded 1 s chunks.
 
-Inputs built as in training (`exp0005_build_mixture.py`, openpi's LIBERO conventions): both cameras rotated 180° at
-128 px (the policy resizes), state = eef pos + axis-angle (openpi's `_quat2axisangle`, robosuite's formula) + gripper
-qpos, normalized with LIBERO's quantiles from `mixture_stats.json`; task text = instruction + the LIBERO condition.
+Inputs built exactly as the training data (`exp0005_common`, shared with the mixture builder): LIBERO rendered in our
+sim at 224 px, both cameras rotated 180° (openpi's convention), state = eef pos + axis-angle + gripper qpos, normalized
+with LIBERO's quantiles from `mixture_stats.json`; the prompt follows the mixture's `prompt_format` (condition + task).
 Actions are de-normalized with LIBERO's action quantiles. The policy replans when its 20-step queue is empty
 (`n_action_steps` = chunk), i.e. open loop within each 1 s chunk. Protocol otherwise as `ecvla.evaluate`: LIBERO's
 fixed initial states, 10 settle no-ops, the suite's step limit.
-
-Before the episodes, a consistency check replays a few states of a recorded demo of the same task and compares the
-state built here with the HDF5's stored `ee_pos` / `ee_ori` / `gripper_states` (what the policy was trained on).
 
 Runs in the VLM env with the project on the path (GPU node):
   PYTHONPATH=src uv run --project vlm python scripts/exp0005_slow_only.py --ckpt <checkpoints/N/pretrained_model> \
@@ -17,57 +14,19 @@ Runs in the VLM env with the project on the path (GPU node):
 
 import argparse
 import json
-import math
 import os
+import sys
 import time
 from pathlib import Path
 
-import h5py
 import numpy as np
 import torch
 
+sys.path.insert(0, str(Path(__file__).parent))
+from exp0005_common import IMG, IMG_SIZE, libero_images, libero_state  # noqa: E402
 from ecvla.evaluate import MAX_STEPS, SETTLE_STEPS
 from ecvla.libero_env import make_env
 from ecvla.sensors import NOOP_ACTION
-
-S = Path(os.environ.get("ECVLA_SCRATCH", "/scratch/sandro.covo/ecvla"))
-IMG = ("observation.images.image", "observation.images.wrist_image")
-
-
-def quat2axisangle(quat):
-    """openpi `examples/libero/main.py` `_quat2axisangle` (robosuite transform_utils); quat = (x, y, z, w)."""
-    quat = np.array(quat, dtype=np.float64)
-    quat[3] = min(max(quat[3], -1.0), 1.0)
-    den = np.sqrt(1.0 - quat[3] * quat[3])
-    if math.isclose(den, 0.0):
-        return np.zeros(3)
-    return (quat[:3] * 2.0 * math.acos(quat[3])) / den
-
-
-def raw_state(obs):
-    return np.concatenate([obs["robot0_eef_pos"], quat2axisangle(obs["robot0_eef_quat"]), obs["robot0_gripper_qpos"]])
-
-
-def consistency_check(env, task_key, suite):
-    """Max |difference| between the state built from sim obs (replayed `states[t + off]`) and the HDF5 obs at t, for
-    offsets -1, 0, +1: a small error that vanishes at one offset is a timing convention, not a conversion error."""
-    f = S / "raw" / suite / f"{task_key}_demo.hdf5"
-    out = {"file": str(f)}
-    with h5py.File(f, "r") as h:
-        d = h["data/demo_0"]
-        T = len(d["states"])
-        ts = [1, T // 2, T - 2]
-        for off in (-1, 0, 1):
-            diffs = []
-            for t in ts:
-                obs = env.set_init_state(d["states"][t + off])
-                ref = np.concatenate([d["obs/ee_pos"][t], d["obs/ee_ori"][t], d["obs/gripper_states"][t]])
-                diffs.append(np.abs(raw_state(obs) - ref))
-            m = np.max(diffs, axis=0)
-            out[f"offset{off:+d}"] = {"pos": float(m[:3].max()), "axisangle": float(m[3:6].max()),
-                                      "gripper": float(m[6:].max())}
-    out["frames"] = ts
-    return out
 
 
 def load_policy(ckpt):
@@ -87,8 +46,7 @@ def load_policy(ckpt):
     return policy, pre, post, {"base": base_path, "lm_head_max_change": head_changed}
 
 
-def to_img(x):
-    img = np.ascontiguousarray(x[::-1, ::-1])  # 180°, as in training (openpi)
+def to_tensor(img):
     return torch.from_numpy(img).permute(2, 0, 1).float()[None] / 255
 
 
@@ -116,10 +74,8 @@ def main():
     key = Path(bddl).stem
     fmt = mix.get("prompt_format", "{task}; {condition}")  # mixtures built before 2026-11-03 put the condition last
     text = fmt.format(condition=stats["condition"], task=task.language)
-    env = make_env(bddl, image_size=128, cameras=True)
-    out = {"ckpt": a.ckpt, "suite": a.suite, "task_id": a.task, "task": key, "prompt": text,
-           "consistency": consistency_check(env, key, a.suite)}
-    print("consistency:", out["consistency"], flush=True)
+    env = make_env(bddl, image_size=IMG_SIZE, cameras=True)  # as the mixture builder renders LIBERO
+    out = {"ckpt": a.ckpt, "suite": a.suite, "task_id": a.task, "task": key, "prompt": text}
     policy, pre, post, out["policy"] = load_policy(a.ckpt)
     print("policy:", out["policy"], flush=True)
     init = bm.get_task_init_states(a.task)
@@ -132,8 +88,9 @@ def main():
         policy.reset()
         success, steps, chunk_s, acts = False, 0, [], []
         for steps in range(1, MAX_STEPS[a.suite] + 1):
-            st = np.clip(2 * (raw_state(obs) - slo) / np.maximum(shi - slo, 1e-6) - 1, -1, 1)
-            batch = {IMG[0]: to_img(obs["agentview_image"]), IMG[1]: to_img(obs["robot0_eye_in_hand_image"]),
+            st = np.clip(2 * (libero_state(obs) - slo) / np.maximum(shi - slo, 1e-6) - 1, -1, 1)
+            main_img, wrist_img = libero_images(obs)
+            batch = {IMG[0]: to_tensor(main_img), IMG[1]: to_tensor(wrist_img),
                      "observation.state": torch.from_numpy(st).float()[None], "task": [text]}
             new_chunk, t0 = len(policy._action_queue) == 0, time.time()
             with torch.no_grad():
