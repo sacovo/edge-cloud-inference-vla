@@ -1,0 +1,87 @@
+{
+ "ckpt": "/scratch/sandro.covo/ecvla/exp0005/runs/debug_lora_500/checkpoints/000500/pretrained_model",
+ "suite": "libero_object",
+ "task_id": 0,
+ "task": "pick_up_the_alphabet_soup_and_place_it_in_the_basket",
+ "prompt": "pick up the alphabet soup and place it in the basket; robot: franka; control: delta end effector; 20 Hz",
+ "consistency": {
+  "file": "/scratch/sandro.covo/ecvla/raw/libero_object/pick_up_the_alphabet_soup_and_place_it_in_the_basket_demo.hdf5",
+  "offset-1": {
+   "pos": 0.01951954144583193,
+   "axisangle": 0.02745333008656463,
+   "gripper": 0.0034047408949462316
+  },
+  "offset+0": {
+   "pos": 0.009661140621653436,
+   "axisangle": 0.014240187612231683,
+   "gripper": 0.001230768737093109
+  },
+  "offset+1": {
+   "pos": 0.00039298158412423567,
+   "axisangle": 0.0005953099271262877,
+   "gripper": 0.0
+  },
+  "frames": [
+   1,
+   74,
+   146
+  ]
+ },
+ "policy": {
+  "base": "/scratch/sandro.covo/ecvla/exp0005/init/pi0fast_from_pi05base_mix_debug",
+  "lm_head_max_change": 0.0064375996589660645
+ },
+ "episodes": [
+  {
+   "episode": 0,
+   "success": false,
+   "steps": 280,
+   "chunks": 14,
+   "chunk_decode_s_mean": 1.8089863743100847,
+   "action_mean": [
+    -0.0816,
+    -0.4603,
+    -0.5241,
+    -0.0318,
+    -0.0605,
+    -0.1164,
+    -0.7187
+   ],
+   "action_std": [
+    0.5362,
+    1.0387,
+    0.9384,
+    0.0528,
+    0.1001,
+    0.082,
+    0.757
+   ]
+  },
+  {
+   "episode": 1,
+   "success": false,
+   "steps": 280,
+   "chunks": 14,
+   "chunk_decode_s_mean": 1.8756372588021415,
+   "action_mean": [
+    -0.1667,
+    -0.2019,
+    -0.1782,
+    0.0004,
+    0.0049,
+    -0.0542,
+    -0.1437
+   ],
+   "action_std": [
+    0.5746,
+    1.1562,
+    1.0611,
+    0.0642,
+    0.1294,
+    0.108,
+    0.9971
+   ]
+  }
+ ],
+ "success_rate": 0.0
+}
