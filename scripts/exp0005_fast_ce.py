@@ -102,7 +102,10 @@ def load_weights(policy, which):
         from transformers import PaliGemmaForConditionalGeneration
 
         hf = PaliGemmaForConditionalGeneration.from_pretrained("google/paligemma-3b-pt-224", torch_dtype=torch.float32)
-        sd = {f"model.paligemma_with_expert.paligemma.{k}": v for k, v in hf.state_dict().items()}
+        V = policy.model.paligemma_with_expert.paligemma.lm_head.weight.shape[0]  # 257152; HF pads to 257216
+        sd = {f"model.paligemma_with_expert.paligemma.{k}": (v[:V] if v.shape[0] > V and v.ndim == 2 and
+                                                              ("lm_head" in k or "embed_tokens" in k) else v)
+              for k, v in hf.state_dict().items()}
         del hf
     res = policy.load_state_dict(sd, strict=False)
     own = set(policy.state_dict())
