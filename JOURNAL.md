@@ -2,6 +2,15 @@
 
 Newest entries first. Each entry covers what was tried, the result, and what failed and why.
 
+## 2026-11-04: EXP-0005 stage 0 — fine-tune pipeline works end to end; full mixture building
+
+- **Debug FAST fine-tune learns** (500 steps, LoRA r 16 + LM head in full, 20+20 episodes): loss 14.1 → 4.9, below uniform over the FAST tokens (7.62) by step 100. Slow-only sim loop runs (2 episodes, 0 successes as expected; decode 1.8 s per 1 s chunk in fp32).
+- **LIBERO data findings:** the HDF5 obs (proprio and images) are one step after the state the action was taken in; our sim renders LIBERO-Object darker than the recorded images and draws robosuite's gripper-site marker. Author: re-render LIBERO from the recorded states in our sim (training = eval images).
+- **Mixture (author):** LIBERO + 7 OXE ports + a DROID file subset (~5k episodes, 16 of 312 video files), native formats and rates, rate in the prompt (common practice: RT-X, π0, CrossFormer, LeRobot; X-VLA normalizes to 4 s windows), video storage. mutex task texts carried `tf.Tensor(b"…")` artifacts (cleaned); every OXE port has gripper 1 = open in its first frames (flipped); 22% of the DROID subset has no instruction.
+- SmolVLA (2506.01844) describes no rate handling; it filtered by embodiment, relabelled tasks with a VLM and fixed the camera order (§3.2).
+- Full build running: 9 part jobs + merge (278831–278840). Next: weighted sampling (DROID ≈ all others combined), bf16, full LoRA fine-tune, slow-only, then stage 1 (R1 latents).
+- Ops: `sbatch --wrap` lost `source` (dash) → `scripts/slurm/vlm_run.sbatch`; build jobs need `PYTHONPATH=src`; calc-g-002 has 95 GB, so memory requests matter there.
+
 ## 2026-11-03: EXP-0005 drafted and stage 0 started — pi05_base loads into LeRobot's pi0_fast
 
 - **EXP-0005 (draft, criteria fixed):** how small an on-robot decoder can turn a frozen VLM latent into a usable plan. Author's decisions: `z-ft-lib` primary (OXE + LIBERO), LoRA first, closed loop at k = 4 (gating) and 10; decoder heads `raw` / `dct` chosen per size offline; H1 supported if a decoder ≤ 100k reaches ≥ 0.90 of the 1M decoder, refuted below 0.70; precondition 1M ≥ 50% of `slow-only`.
