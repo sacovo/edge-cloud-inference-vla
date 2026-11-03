@@ -2,6 +2,14 @@
 
 Newest entries first. Each entry covers what was tried, the result, and what failed and why.
 
+## 2026-11-03: EXP-0005 drafted and stage 0 started — pi05_base loads into LeRobot's pi0_fast
+
+- **EXP-0005 (draft, criteria fixed):** how small an on-robot decoder can turn a frozen VLM latent into a usable plan. Author's decisions: `z-ft-lib` primary (OXE + LIBERO), LoRA first, closed loop at k = 4 (gating) and 10; decoder heads `raw` / `dct` chosen per size offline; H1 supported if a decoder ≤ 100k reaches ≥ 0.90 of the 1M decoder, refuted below 0.70; precondition 1M ≥ 50% of `slow-only`.
+- **Fine-tuning recipe (author, after a quick literature brief, `cross_embodiment_brief.md`):** native action formats, per-dataset 1/99% quantile normalization, robot / control mode / rate in the prompt (π0.5 style). OXE action formats surveyed with sources (`oxe_action_formats.md`); LeRobot OXE ports have `robot_type` "unknown".
+- **LeRobot code check:** `pi05` trains only with flow matching (no FAST loss); FAST training is `pi0_fast`. LeRobot needs torch < 2.12 → separate env `vlm/` (torch 2.11.0+cu128). Multi-dataset training is disabled and would merge stats → own per-dataset normalization step needed. Prompt: `Task: …, State: …;\nAction: `.
+- **Load check passed** (job 125173): `pi05_base`'s VLM fills all 604 `pi0_fast` tensors (0 missing; 209 unused = action expert). FAST+ round-trips LIBERO 1 s chunks (32 tokens on average, L1 0.009). Open: whether `lm_head` already knows FAST tokens.
+- Ops slips: a git dependency failed on the compute nodes (git-lfs required by the HPC git config, not installed) → LeRobot from the source archive; the HF token lacked gated-repo access (403, reported by transformers as "couldn't connect") → fixed by the author. Fallback if (a) had failed: the author's SmolVLA FAST+ code (`sacovo/smolva-rl`).
+
 ## 2026-11-02: EXP-0004 done — H1 supported: the k = 20 collapse was mostly the blind start
 
 - **H1 supported as pre-registered** (100k, k = 20, Spatial + Object, 3 seeds): gap `replay` − `track` 17.9 pp without hold → **4.0 pp** with hold (seeds 6.0 / 0.2 / 5.7; 0.22 of the no-hold gap, bar ⅓).

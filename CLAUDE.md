@@ -9,7 +9,7 @@ Research question: how small can the on-robot policy be when it is conditioned o
   - EXP-0002 done (results in its §8): a 40-step plan lifts the 100k student at k = 10 from 39% to 61% (H1 supported); k = 20 still collapses; the 10k student is worse with the 280-d z.
   - EXP-0003 done (results in its §8): H1 inconclusive (100k k = 20: 22.4% vs 11.6%, +10.7 pp, bar 15); the student falls 17.9 pp short of the teacher replaying its own delayed plan; the residual never nears its bound; the 10k student reaches 0.96 of the teacher at k = 10.
   - EXP-0004 done (results in its §8): with a hold start until the first plan, the 100k student reaches 61% at k = 20 (0.89 of the teacher; gap to `replay` 17.9 → 4.0 pp). The k = 20 collapse was mostly the blind start. The student still adds nothing over the plan.
-  - **Next: EXP-0005 (VLM latent → plan decoder size), draft; the author decided dataset/latent/recipe/k on 2026-11-02.**
+  - **Now: EXP-0005 (VLM latent → plan decoder size), criteria fixed; stage 0 (infrastructure) in progress: `pi05_base` loads into LeRobot `pi0_fast` (env in `vlm/`, `scripts/slurm/vlm_*.sbatch`).**
 
 ## Session start
 Read `JOURNAL.md` (latest entries first) before doing anything else.
