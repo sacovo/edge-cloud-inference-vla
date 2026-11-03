@@ -1,13 +1,14 @@
 # EXP-0005 slow-model environment (pi05_base / LeRobot), separate from the main project:
-# LeRobot needs torch < 2.12 while the main env pins 2.14.1+cu126. torch comes from LeRobot's own uv source (the
-# cu128 index), which the HPC's CUDA 12.9 driver supports. LeRobot is pinned to the commit read in the EXP-0005
-# stage-0 code check (0.6.2 is not on PyPI).
+# LeRobot needs torch < 2.12 while the main env pins 2.14.1+cu126. torch comes from the cu128 index (as LeRobot's
+# own config; the HPC's CUDA 12.9 driver supports it). LeRobot is pinned to the commit read in the EXP-0005
+# stage-0 code check (0.6.2 is not on PyPI), as a source archive: the HPC git config requires git-lfs, which the
+# compute nodes lack, so a git dependency fails at checkout.
 [project]
 name = "ecvla-vlm"
 version = "0.1.0"
 requires-python = ">=3.12,<3.13"
 dependencies = [
-    "lerobot[pi] @ git+https://github.com/huggingface/lerobot@f5c9bc02137c331b009eccd44ece6f11b62187a8",
+    "lerobot[pi] @ https://github.com/huggingface/lerobot/archive/f5c9bc02137c331b009eccd44ece6f11b62187a8.tar.gz",
     "torch==2.11.0",
     "torchvision==0.26.0",
     "numpy",
@@ -15,3 +16,13 @@ dependencies = [
 
 [tool.uv]
 package = false
+
+# The source archive does not carry LeRobot's uv sources, so pin its cu128 torch index here.
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux'" }]
+torchvision = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux'" }]
