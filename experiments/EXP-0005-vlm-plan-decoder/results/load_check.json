@@ -1,0 +1,50 @@
+{
+ "paligemma_tokenizer": "PASS",
+ "load": {
+  "checkpoint": "/scratch/sandro.covo/hf/hub/models--lerobot--pi05_base/snapshots/22c30e5b34f9e7ab738b1b34fc2fc5ecfe2d28f0/model.safetensors",
+  "checkpoint_tensors": 812,
+  "model_tensors": 604,
+  "missing": [],
+  "unexpected": 209,
+  "unexpected_non_expert": [],
+  "shapes_match": true,
+  "verdict": "PASS"
+ },
+ "fast": {
+  "chunks": 512,
+  "tokens_per_chunk_mean": 32.22265625,
+  "tokens_per_chunk_max": 61,
+  "max_action_tokens": 256,
+  "recon_l1_norm_mean": 0.016944939438304666,
+  "recon_l1_norm_max": 0.1264367699623108,
+  "recon_l1_raw_mean": 0.009156503922047182,
+  "action_token_range": [
+   103,
+   2044
+  ],
+  "paligemma_id_range": [
+   254979,
+   256920
+  ],
+  "paligemma_vocab": 257152,
+  "fast_skip_tokens": 128,
+  "quantiles_lo": [
+   -0.6696428656578064,
+   -0.8303571343421936,
+   -0.9375,
+   -0.09321428835391998,
+   -0.17571428418159485,
+   -0.17571428418159485,
+   -1.0
+  ],
+  "quantiles_hi": [
+   0.9375,
+   0.8544642925262451,
+   0.9375,
+   0.09321428835391998,
+   0.16285714507102966,
+   0.10928571224212646,
+   1.0
+  ]
+ }
+}
