@@ -227,6 +227,8 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--max-episodes", type=int, default=0, help="per source (per LIBERO file); 0 = all")
     ap.add_argument("--check", action="store_true", help="stats, gripper signs and prompt lengths only")
+    ap.add_argument("--stats", help="mixture_check.json of a full --check: use its per-source stats and the mixture's "
+                                    "dims (building sources as separate parts for scripts/exp0005_merge_mixture.py)")
     a = ap.parse_args()
     from transformers import AutoTokenizer
 
@@ -234,7 +236,12 @@ def main():
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
     stats = {"fps": FPS, "img_size": IMG_SIZE, "prompt_format": PROMPT, "sources": {}}
-    for name in a.sources:
+    if a.stats:
+        ref = json.loads(Path(a.stats).read_text())
+        assert ref["prompt_format"] == PROMPT and ref["img_size"] == IMG_SIZE, "check file from another builder version"
+        stats.update(state_dim=ref["state_dim"], action_dim=ref["action_dim"], stats_from=a.stats,
+                     sources={n: ref["sources"][n] for n in a.sources})
+    for name in [] if a.stats else a.sources:
         cfg, t0 = SOURCES[name], time.time()
         cols = (libero_columns if cfg.get("loader") == "libero" else lerobot_columns)(cfg, a.max_episodes)
         s = stats["sources"][name] = source_stats(cfg, cols, tok)
@@ -242,8 +249,9 @@ def main():
               f"grip sign {s['grip_sign']} (first-frame mean {s['grip_first_frame_normalized_mean']:+.2f}, "
               f"share>0 {s['grip_first_frame_share_positive']:.2f}), max tokens {s['max_task_tokens']}, "
               f"empty tasks {s['empty_tasks']} ({time.time() - t0:.0f} s)", flush=True)
-    stats["state_dim"] = max(s["state_dim"] for s in stats["sources"].values())
-    stats["action_dim"] = max(s["action_dim"] for s in stats["sources"].values())
+    if not a.stats:
+        stats["state_dim"] = max(s["state_dim"] for s in stats["sources"].values())
+        stats["action_dim"] = max(s["action_dim"] for s in stats["sources"].values())
     (out / ("mixture_check.json" if a.check else "mixture_stats.json")).write_text(json.dumps(stats, indent=1))
     if a.check:
         print("check written", out / "mixture_check.json")
