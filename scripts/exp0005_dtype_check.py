@@ -90,7 +90,6 @@ def main():
     t16 = (time.time() - t0) / len(items)
     rows = []
     for (suite, stem, t, _, rec), (c32, z32), (c16, z16) in zip(items, f32, b16):
-        n = min(len(rec), len(c32), len(c16))
         w = len(z32) // 2
         cos = lambda u, v: float(u @ v / (np.linalg.norm(u) * np.linalg.norm(v)))  # noqa: E731
         rel = lambda u, v: float(np.linalg.norm(u - v) / np.linalg.norm(u))  # noqa: E731
