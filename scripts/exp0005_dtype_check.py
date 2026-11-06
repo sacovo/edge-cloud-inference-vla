@@ -94,16 +94,18 @@ def main():
         w = len(z32) // 2
         cos = lambda u, v: float(u @ v / (np.linalg.norm(u) * np.linalg.norm(v)))  # noqa: E731
         rel = lambda u, v: float(np.linalg.norm(u - v) / np.linalg.norm(u))  # noqa: E731
-        rows.append({"suite": suite, "task": stem, "step": t, "identical": bool(np.array_equal(c32, c16)),
-                     "l1_bf16_vs_fp32": float(np.abs(c32 - c16).mean()),
-                     "l1_fp32_vs_demo": float(np.abs(c32[:n] - rec[:n]).mean()),
-                     "l1_bf16_vs_demo": float(np.abs(c16[:n] - rec[:n]).mean()),
+        l1 = lambda u, v: None if u is None or v is None else float(np.abs(u[:len(v)] - v[:len(u)]).mean())  # noqa: E731
+        rows.append({"suite": suite, "task": stem, "step": t, "fail_fp32": c32 is None, "fail_bf16": c16 is None,
+                     "identical": c32 is not None and c16 is not None and bool(np.array_equal(c32, c16)),
+                     "l1_bf16_vs_fp32": l1(c32, c16), "l1_fp32_vs_demo": l1(c32, rec), "l1_bf16_vs_demo": l1(c16, rec),
                      "r1_last_cos": cos(z32[:w], z16[:w]), "r1_pool_cos": cos(z32[w:], z16[w:]),
                      "r1_last_rel_l2": rel(z32[:w], z16[:w]), "r1_pool_rel_l2": rel(z32[w:], z16[w:])})
     keys = [k for k in rows[0] if k not in ("suite", "task", "step")]
-    summary = {k: float(np.mean([r[k] for r in rows])) for k in keys}
+    mean = lambda k: float(np.mean(v)) if (v := [r[k] for r in rows if r[k] is not None]) else None  # noqa: E731
+    summary = {k: mean(k) for k in keys}
     summary.update({f"{k}_min": float(np.min([r[k] for r in rows])) for k in ("r1_last_cos", "r1_pool_cos")})
-    summary.update({"l1_bf16_vs_fp32_p95": float(np.quantile([r["l1_bf16_vs_fp32"] for r in rows], 0.95)),
+    l1s = [r["l1_bf16_vs_fp32"] for r in rows if r["l1_bf16_vs_fp32"] is not None]
+    summary.update({"l1_bf16_vs_fp32_p95": float(np.quantile(l1s, 0.95)) if l1s else None,
                     "s_per_frame_fp32": t32, "s_per_frame_bf16": t16, "frames": len(rows)})
     print(json.dumps(summary, indent=1))
     Path(a.out).parent.mkdir(parents=True, exist_ok=True)

@@ -13,6 +13,8 @@ step (t - src) of the latest delivered chunk (clamped to the chunk); schedule fr
 `ecvla.evaluate --replay`. `--hold-start` as EXP-0004 (first chunk treated as fresh); without it the model executes
 the first step of a fresh chunk until the first one arrives. `--dtype bfloat16` casts the LM to bf16 (vision tower,
 projector and norms stay fp32, as LeRobot's own bf16 path).
+A decoded sequence that is not a FAST chunk counts as a dropped update (the latest good chunk continues;
+no-op before the first); counted per episode (`decode_failed`).
 
 Runs in the VLM env with the project on the path (GPU node):
   PYTHONPATH=src uv run --project vlm python scripts/exp0005_slow_only.py --ckpt <checkpoints/N/pretrained_model> \
@@ -58,9 +60,14 @@ def load_policy(ckpt, dtype="float32"):
 
 
 @torch.no_grad()
-def predict_chunk(policy, pre, post, batch) -> np.ndarray:
-    """(chunk, 7) normalized actions decoded from one observation, post-processed per step as select_action's."""
-    c = policy.predict_action_chunk(pre(batch))
+def predict_chunk(policy, pre, post, batch) -> np.ndarray | None:
+    """(chunk, 7) normalized actions decoded from one observation, post-processed per step as select_action's;
+    None if the generated tokens are not a FAST chunk (LeRobot's detokenizer asserts on a missing "Action:")."""
+    try:
+        c = policy.predict_action_chunk(pre(batch))
+    except AssertionError as e:
+        print("decode failed:", str(e)[:120], flush=True)
+        return None
     return np.stack([post(c[:, j])[0].float().cpu().numpy()[:7] for j in range(c.shape[1])])
 
 
@@ -110,7 +117,7 @@ def main():
         for _ in range(SETTLE_STEPS):
             obs, _, _, _ = env.step(NOOP_ACTION)
         policy.reset()
-        success, steps, chunk_s, acts = False, 0, [], []
+        success, steps, chunk_s, acts, failed = False, 0, [], [], 0
         T = MAX_STEPS[a.suite]
         if a.k:
             src, _ = state_source(T, "z-teacher", np.random.default_rng(a.seed), k=a.k, train=False)
@@ -129,8 +136,11 @@ def main():
                     t0 = time.time()
                     hist[t] = predict_chunk(policy, pre, post, batch)
                     chunk_s.append(time.time() - t0)
-                c = hist[s0]
-                an = c[min(t - s0, len(c) - 1)]
+                    failed += hist[t] is None
+                # a failed decode counts as a dropped update: keep the latest good chunk; none yet → no-op
+                ok = [q for q, c in hist.items() if q <= s0 and c is not None]
+                s1 = max(ok) if ok else None
+                an = None if s1 is None else hist[s1][min(t - s1, len(hist[s1]) - 1)]
             else:
                 new_chunk, t0 = len(policy._action_queue) == 0, time.time()
                 with torch.no_grad():
@@ -138,20 +148,21 @@ def main():
                 if new_chunk:
                     chunk_s.append(time.time() - t0)
                 an = act[0].float().cpu().numpy()[:7]
-            raw = alo + (an + 1) / 2 * (ahi - alo)
+            raw = NOOP_ACTION if an is None else alo + (an + 1) / 2 * (ahi - alo)
             acts.append(raw)
             obs, _, done, _ = env.step(np.clip(raw, -1, 1))
             if done or env.check_success():
                 success = True
                 break
         acts = np.array(acts)
-        eps.append({"episode": ep, "success": success, "steps": steps, "chunks": len(chunk_s),
+        eps.append({"episode": ep, "success": success, "steps": steps, "chunks": len(chunk_s), "decode_failed": failed,
                     "chunk_decode_s_mean": float(np.mean(chunk_s)) if chunk_s else None,
                     "action_mean": acts.mean(0).round(4).tolist(), "action_std": acts.std(0).round(4).tolist()})
         print(eps[-1], flush=True)
     env.close()
     out["episodes"] = eps
     out["success_rate"] = float(np.mean([e["success"] for e in eps]))
+    out["decode_failed"] = int(sum(e["decode_failed"] for e in eps))
     Path(a.out).parent.mkdir(parents=True, exist_ok=True)
     Path(a.out).write_text(json.dumps(out, indent=1))
     print("done", a.out, out["success_rate"])
