@@ -2,6 +2,16 @@
 
 Newest entries first. Each entry covers what was tried, the result, and what failed and why.
 
+## 2026-11-06: Session handoff — EXP-0005 mixture built; full FAST fine-tune is next
+
+- **Done:** mixture v2 (`$ECVLA_SCRATCH/exp0005/datasets/mix_v2`, 16 GB, 9,837 episodes, 9 sources, per-source quantiles and gripper signs in `mix_v2/mixture_stats.json`); weighted sampler (LIBERO 0.33, rest frames^0.43; `scripts/exp0005_train.py`, test passes); bf16 smoke tests (batch 16: 0.68 s/step, 82 GB; batch 32 + grad ckpt: 1.56 s/step, 45 GB).
+- **Next (in order):**
+  1. Decide the full-run length with the author (proposal: batch 16, 30k steps ≈ 6 h at 0.68 s/step ≈ 480k samples; LeRobot's pi0_fast schedule decays over 30k), then `sbatch -t 1-00:00:00 scripts/slurm/exp0005_train.sbatch $S/datasets/mix_v2 $S/runs/<name> --steps=30000 --save_freq=5000` (S = `$ECVLA_SCRATCH/exp0005`; extra args are not expanded in the job, pass absolute paths). The start checkpoint is built on the fly into `$S/init/pi0fast_from_pi05base_mix_v2` (needs mixture_stats.json).
+  2. Slow-only check on LIBERO with the trained adapter: `scripts/slurm/exp0005_slow_only.sbatch --ckpt <run>/checkpoints/<N>/pretrained_model --mixture $S/datasets/mix_v2 --suite libero_spatial|libero_object --task-key <bddl name> --episodes 2 --out <json>`; then a proper slow-only success rate (precondition reference in §5).
+  3. Stage 1: precompute R1 latents (hidden state at the first action-token position + mean-pooled prefix) on all LIBERO Spatial + Object demo frames, rendered as in the mixture (`scripts/exp0005_common.py`).
+- **Known pitfalls:** VPN often drops; use the tunnel (`ssh -p 2222 -o HostKeyAlias=calculon.informatik.fhnw.ch sandro.covo@localhost`); background watchers must use the same host. VLM env = `vlm/` (separate uv project, torch 2.11 cu128, LeRobot @ f5c9bc0 as source archive); jobs that import `ecvla` need `PYTHONPATH=src`; do not use `sbatch --wrap` (dash), use `scripts/slurm/vlm_run.sbatch`. torchcodec cannot load FFmpeg on the nodes (harmless warnings; decode with pyav). `lerobot_train` with `--policy.path` needs the pre/post-processor files next to the weights; PEFT checkpoints load via `PeftModel.from_pretrained` on the start checkpoint (see `exp0005_slow_only.py`). OXE LeRobot ports: gripper 1 = open, some episodes' video does not cover their timestamps (skipped), task texts may carry `tf.Tensor(b"…")`.
+- **Open / not verified:** whether LeRobot rescales its LR schedule to `--steps` (500-step debug run decayed fully); decode speed in bf16 for slow-only; `iamlab_cmu` gripper rule held for only 86% of episodes.
+
 ## 2026-11-04: EXP-0005 stage 0 — fine-tune pipeline works end to end; full mixture building
 
 - **Debug FAST fine-tune learns** (500 steps, LoRA r 16 + LM head in full, 20+20 episodes): loss 14.1 → 4.9, below uniform over the FAST tokens (7.62) by step 100. Slow-only sim loop runs (2 episodes, 0 successes as expected; decode 1.8 s per 1 s chunk in fp32).

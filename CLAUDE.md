@@ -9,7 +9,7 @@ Research question: how small can the on-robot policy be when it is conditioned o
   - EXP-0002 done (results in its §8): a 40-step plan lifts the 100k student at k = 10 from 39% to 61% (H1 supported); k = 20 still collapses; the 10k student is worse with the 280-d z.
   - EXP-0003 done (results in its §8): H1 inconclusive (100k k = 20: 22.4% vs 11.6%, +10.7 pp, bar 15); the student falls 17.9 pp short of the teacher replaying its own delayed plan; the residual never nears its bound; the 10k student reaches 0.96 of the teacher at k = 10.
   - EXP-0004 done (results in its §8): with a hold start until the first plan, the 100k student reaches 61% at k = 20 (0.89 of the teacher; gap to `replay` 17.9 → 4.0 pp). The k = 20 collapse was mostly the blind start. The student still adds nothing over the plan.
-  - **Now: EXP-0005 (VLM latent → plan decoder size), criteria fixed; stage 0 (infrastructure) in progress: `pi05_base` loads into LeRobot `pi0_fast` (env in `vlm/`, `scripts/slurm/vlm_*.sbatch`).**
+  - **Now: EXP-0005 (VLM latent → plan decoder size), criteria fixed; stage 0 nearly done: mixture v2 built, weighted bf16 LoRA FAST fine-tune ready (`scripts/slurm/exp0005_train.sbatch`). Next steps in the latest JOURNAL entry.**
 
 ## Session start
 Read `JOURNAL.md` (latest entries first) before doing anything else.
@@ -23,6 +23,7 @@ Read `JOURNAL.md` (latest entries first) before doing anything else.
   - Job env: `scripts/slurm/env.sh` (uv-managed Python, `--extra libero`). torch is pinned to 2.14.1+cu126 (the GPU driver is CUDA 12.9).
   - Fast-policy jobs: `a1_train.sbatch` (GPU, `--require-gpu`), `a1_train_cpu.sbatch` (10k/100k heads), `a1_eval.sbatch` (one run per element; lines `<run> <suite> <k|1,10|->`), `a1_teacher_latents.sbatch`, `a1_submitter.sbatch` (cluster-side: submits evals as runs finish).
   - Avoid RTX 2080 nodes for 10M runs (a 4 h timeout); use `-p h200` or `performance,h200`.
+  - EXP-0005 VLM jobs: separate env `vlm/` (`scripts/slurm/vlm_env.sh`, `vlm_run.sbatch` for one-off scripts; never `sbatch --wrap`); `exp0005_build_mixture` / `_merge_mixture` / `_train` / `_slow_only` sbatch scripts; jobs importing `ecvla` need `PYTHONPATH=src`.
 - Rebuild bibliography: `python3 scripts/merge_bib.py`
 - Verify bibliography: `python3 scripts/verify_bib.py` (must exit 0; queries the arXiv API)
 - A PostToolUse hook (`scripts/hooks/bib_check.sh`) runs both whenever `literature/bib/*.bib` is edited. If it reports a MISMATCH, fix the entry; do not weaken the check.
