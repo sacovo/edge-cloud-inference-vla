@@ -10,6 +10,8 @@ Newest entries first. Each entry covers what was tried, the result, and what fai
 - **Stage 1:** `scripts/exp0005_latents.py` + `exp0005_latents.sbatch` (R1 at the last "Action: " token + mean-pooled prefix, frames re-rendered from recorded states).
 - Debug tests of both on the 100-step smoke checkpoint, bf16, A4500 debug partition: jobs 279581 (latents; 279579 cancelled, asked for more memory than the free A4500 node had) / 279580 (slow-only). Start estimates: debug ~18:20–18:55, full fine-tune ~21:53 (calc-g-041).
 - Access: VPN host did not resolve; tunnel used throughout.
+- Debug results (smoke checkpoint, A4500): latents 279581 failed at CUDA init on calc-g-010 ("CUDA driver initialization failed"; nvidia-smi saw the GPU), so the node is excluded and the job resubmitted as 279586. Slow-only 279580 crashed in LeRobot's `detokenize_actions`: the 100-step model emits non-FAST tokens and the detokenizer asserts. A failed decode now counts as a dropped update (latest good chunk continues; no-op before the first) and is counted per episode (`decode_failed`); the dtype check does the same. Resubmitted as 279587 (slow-only) and 279588 (dtype). The debug partition allows 1 GPU per user, so these run one after another.
+- Author: compare bf16 vs fp32 on the first real checkpoint (`scripts/exp0005_dtype_check.py`: decoded chunks, action L1, R1 cosine). A local watcher submits it when `checkpoints/005000` appears. Cluster check every 30 min (session cron).
 
 ## 2026-11-06: Session handoff — EXP-0005 mixture built; full FAST fine-tune is next
 
