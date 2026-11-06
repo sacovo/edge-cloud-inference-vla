@@ -2,6 +2,15 @@
 
 Newest entries first. Each entry covers what was tried, the result, and what failed and why.
 
+## 2026-11-06: EXP-0005 full FAST fine-tune submitted; slow-only k = 4 protocol and R1 extraction written
+
+- **Full fine-tune:** 30k steps, batch 16 (author), job 279575 (h200, pending on resources at submission), run `$ECVLA_SCRATCH/exp0005/runs/ft_v2_b16_30k`, checkpoints every 5k.
+- **LR schedule resolved:** LeRobot's pi0_fast cosine schedule (1k warmup, 2.5e-5 → 2.5e-6 over 30k) scales down for shorter runs, never up; any run > 30k needs `scheduler_decay_steps`.
+- **Slow-only reference:** the old script replanned every 20 steps without delay; README §3 asks for the delayed k = 4 protocol. Added `--k/--hold-start/--dtype` reusing EXP-0003/0004's schedule code.
+- **Stage 1:** `scripts/exp0005_latents.py` + `exp0005_latents.sbatch` (R1 at the last "Action: " token + mean-pooled prefix, frames re-rendered from recorded states).
+- Debug tests of both on the 100-step smoke checkpoint, bf16, A4500 debug partition: jobs 279581 (latents; 279579 cancelled, asked for more memory than the free A4500 node had) / 279580 (slow-only). Start estimates: debug ~18:20–18:55, full fine-tune ~21:53 (calc-g-041).
+- Access: VPN host did not resolve; tunnel used throughout.
+
 ## 2026-11-06: Session handoff — EXP-0005 mixture built; full FAST fine-tune is next
 
 - **Done:** mixture v2 (`$ECVLA_SCRATCH/exp0005/datasets/mix_v2`, 16 GB, 9,837 episodes, 9 sources, per-source quantiles and gripper signs in `mix_v2/mixture_stats.json`); weighted sampler (LIBERO 0.33, rest frames^0.43; `scripts/exp0005_train.py`, test passes); bf16 smoke tests (batch 16: 0.68 s/step, 82 GB; batch 32 + grad ckpt: 1.56 s/step, 45 GB).
