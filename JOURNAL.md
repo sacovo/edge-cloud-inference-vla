@@ -2,6 +2,14 @@
 
 Newest entries first. Each entry covers what was tried, the result, and what failed and why.
 
+## 2026-11-07: EXP-0005 slow-only = 0% — diagnosing model vs closed loop
+
+- Tunnel down ~00:00–08:00 (no checks possible); jobs ran regardless.
+- **Slow-only (030000, k = 4, hold, fp32): 0 / 500 successes** on the 10 finished tasks (Spatial t6–t9, Object t0–t5; 50 eps each), **0 decode failures**. Object t6–t9 (279651) still running, 0 successes after ~47 eps each. Gripper command means −0.23 … −0.63 on Object (the gripper does close), −0.98 / −1.00 on Spatial t8 / t6 (almost never closes). Arm action std ~0.2–0.35 normalized.
+- Job problems: 279628 (Spatial t0) exited 134 (abort) right after loading the policy, no Python traceback; 279648 (packed Spatial t1–t5) decoded at ~90 s per chunk instead of 2.6–3 s in the other packed jobs on the same node and timed out at 6 h after 1–2 eps per task (cause unknown). Spatial t0–t5 have no result.
+- At 5k the decoded chunks were already far from the demos (L1 0.46 normalized, dtype check). Training loss ended ~3.1 nats per FAST token.
+- **Next:** `scripts/exp0005_offline_check.py` (decoded chunk vs demo per dimension on training frames, with zero-action and persistence baselines, gripper sign agreement) on 030000 and 005000 (jobs 279767 / 279766, h200). Offline good + closed loop 0% → closed-loop pipeline bug; offline poor → the model (undertrained: ~1.2 LIBERO epochs, or a training-data / normalization problem). Missing Spatial t0–t5 slow-only runs are on hold until this is known.
+
 ## 2026-11-06: EXP-0005 full FAST fine-tune submitted; slow-only k = 4 protocol and R1 extraction written
 
 - **Full fine-tune:** 30k steps, batch 16 (author), job 279575 (h200, pending on resources at submission), run `$ECVLA_SCRATCH/exp0005/runs/ft_v2_b16_30k`, checkpoints every 5k.
