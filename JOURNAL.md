@@ -2,6 +2,13 @@
 
 Newest entries first. Each entry covers what was tried, the result, and what failed and why.
 
+## 2026-11-08: Session paused — stronger-LoRA LIBERO-only run trained; checks queued
+
+- **Stronger-LoRA run 279945 done** (calc-g-041, 18:51–20:51, no errors; `lora_alpha` 16 in the saved adapters, peak LR 2e-4 in the log): training loss 5.5 (step 100) → 3.98 (500) → 3.33 (1k) → 3.10 (2k) → 2.96 (3k) → 2.89 (5k) → 2.76 (8k) → **2.60 (10k)**, vs 3.29 at 10k for the earlier LIBERO-only run (same data and steps). No instability at the 8× LR (grad norm 2.7–3.4). Checkpoints 005000 / 010000 in `runs/ft_v2_libonly_lr2e-4_a16_10k`.
+- **Queued at pause (not yet read):** offline check 279955 and teacher-forced loss 279956 on 010000 (debug A4500) → `$ECVLA_SCRATCH/exp0005/offline_check/ft_v2_libonly_lr2e-4_a16_10k_010000_a4500_even.json`, `.../tf_loss/ft_v2_libonly_lr2e-4_a16_10k_010000.json`. Compare with the 2.5e-5 run: offline arm L1 0.31–0.36 (zero action 0.32–0.40, persistence 0.24–0.36), teacher-forced true / shuffled / blank 3.46 / 3.84 / 3.76.
+- **Next (after reading them):** if the decoded chunks now clearly beat the zero action, retrain the mixture with the stronger LoRA (author decides length and LIBERO share), then slow-only (k = 4, hold, fp32; the packed `exp0005_slow_only_pack.sbatch`) → precondition reference → stage 1 latents. If not, consider longer training or the README full-fine-tune fallback.
+- Still open: Spatial t0–t5 slow-only runs for the old 30k model (moot if it is replaced); calc-g-041 exit-134 aborts for render + model jobs (unexplained; training jobs run fine there); the 30-min cluster check loop was stopped at the pause.
+
 ## 2026-11-08: EXP-0005 LIBERO-only sanity run — no better: a training-setup problem, not dilution
 
 - Tunnel down 2026-11-07 21:40 → 2026-11-08 17:40; the checkpoint watcher timed out, offline checks submitted by hand.
