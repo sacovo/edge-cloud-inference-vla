@@ -15,6 +15,12 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import torch
+
+# Initialize CUDA before robosuite / MuJoCo (EGL rendering) is imported: CUDA init failed on shared GPU nodes
+# otherwise (JOURNAL 2026-11-08).
+if torch.cuda.is_available():
+    torch.cuda.init()
 
 sys.path.insert(0, str(Path(__file__).parent))
 from exp0005_dtype_check import frames  # noqa: E402

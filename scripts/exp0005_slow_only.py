@@ -32,6 +32,11 @@ from pathlib import Path
 import numpy as np
 import torch
 
+# Initialize CUDA before robosuite / MuJoCo (EGL rendering) is imported: CUDA init failed on shared GPU nodes
+# otherwise (JOURNAL 2026-11-08).
+if torch.cuda.is_available():
+    torch.cuda.init()
+
 sys.path.insert(0, str(Path(__file__).parent))
 from exp0005_common import IMG, IMG_SIZE, libero_images, libero_state  # noqa: E402
 from ecvla.evaluate import MAX_STEPS, SETTLE_STEPS, hold_start
