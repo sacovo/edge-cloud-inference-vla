@@ -2,6 +2,14 @@
 
 Newest entries first. Each entry covers what was tried, the result, and what failed and why.
 
+## 2026-11-08: EXP-0005 LIBERO-only sanity run — no better: a training-setup problem, not dilution
+
+- Tunnel down 2026-11-07 21:40 → 2026-11-08 17:40; the checkpoint watcher timed out, offline checks submitted by hand.
+- **LIBERO-only run** (279807, calc-g-041, 1 h 47 min, `LIBERO_SHARE=1.0`, sampler log confirms share 1.0): training loss 14.5 (step 100) → 4.2 (1k) → 3.75 (2k) → 3.52 (5k) → **3.29 (10k)**, about the mixture run's level although only LIBERO was seen.
+- **Offline check 010000** (279941, calc-g-009, same 139 frames as the 30k check), pooled L1 (pos xyz, rot xyz, grip): model 0.31 / 0.32 / 0.36, 0.35 / 0.32 / 0.44, 0.74; gripper sign agreement 0.63. Zero action 0.32 / 0.35 / 0.40, 0.22 / 0.26 / 0.27, 1.00; persistence 0.27 / 0.24 / 0.36, 0.26 / 0.25 / 0.15, 0.27. **No better than the zero action on its own training frames, worse than the mixture run on rotation and gripper.** By the pre-agreed reading: not dilution; a training-setup problem.
+- Next: teacher-forced loss with the true chunk vs a chunk from another task vs black images (`scripts/exp0005_tf_loss.py`, jobs 279943 libonly-10k, 279944 mix-30k): true ≈ shuffled → the model ignores the observation (training problem); true ≪ shuffled → it conditions, and the decode path is the suspect. Offline check 005000 (279942) running.
+- Ops: offline check 279939 (calc-g-008, `SLURM_JOB_GPUS=3`, `CUDA_VISIBLE_DEVICES=0`) failed with "CUDA driver initialization failed" in `load_policy` (as latents test 279581 on calc-g-010). Workaround (ff34ba2): the EXP-0005 GPU scripts initialize CUDA before robosuite / MuJoCo are imported; the rerun 279941 (calc-g-009, GPU 0) passed. Whether the workaround fixes the GPU ≠ 0 case is not shown yet. The calc-g-041 exit-134 aborts are still unexplained.
+
 ## 2026-11-07: EXP-0005 slow-only = 0% — diagnosing model vs closed loop
 
 - Tunnel down ~00:00–08:00 (no checks possible); jobs ran regardless.
